@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "deepnote-sshtunnel"
 dynamic = ["version"]
-description = "Pure python SSH tunnels (Deepnote fork with paramiko 3-5 support)"
+description = "Pure python SSH tunnels (Deepnote fork)"
 readme = "README.rst"
 requires-python = ">=3.10"
 license = "MIT"
