@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 *sshtunnel* - Initiate SSH tunnels via a remote gateway.
 
@@ -12,10 +11,12 @@ The connection(s) are closed when explicitly calling the
 """
 
 import os
+import queue
 import random
 import string
 import sys
 import socket
+import socketserver
 import getpass
 import logging
 import argparse
@@ -23,22 +24,17 @@ import warnings
 import threading
 from select import select
 from binascii import hexlify
+from importlib.metadata import version as _get_version
 
 import paramiko
 
-if sys.version_info[0] < 3:  # pragma: no cover
-    import Queue as queue
-    import SocketServer as socketserver
-    string_types = basestring,  # noqa
-    input_ = raw_input  # noqa
-else:  # pragma: no cover
-    import queue
-    import socketserver
-    string_types = str
-    input_ = input
+string_types = str
+input_ = input
 
-
-__version__ = '0.4.0'
+try:
+    __version__ = _get_version('deepnote-sshtunnel')
+except Exception:
+    __version__ = '0.0.0'
 __author__ = 'pahaz'
 
 
@@ -181,8 +177,6 @@ def create_logger(logger=None,
 
             Default: True
 
-            .. note:: ignored in python 2.6
-
         add_paramiko_handler (boolean):
             Whether or not add a console handler for ``paramiko.transport``'s
             logger if no handler present
@@ -208,7 +202,7 @@ def create_logger(logger=None,
     if add_paramiko_handler:
         _check_paramiko_handlers(logger=logger)
 
-    if capture_warnings and sys.version_info >= (2, 7):
+    if capture_warnings:
         logging.captureWarnings(True)
         pywarnings = logging.getLogger('py.warnings')
         pywarnings.handlers.extend(logger.handlers)
@@ -1089,12 +1083,11 @@ class SSHTunnelForwarder(object):
         if host_pkey_directories is None:
             host_pkey_directories = [DEFAULT_SSH_DIRECTORY]
 
-        paramiko_key_types = {'rsa': paramiko.RSAKey,
-                              'dsa': paramiko.DSSKey,
-                              'ecdsa': paramiko.ECDSAKey}
-        if hasattr(paramiko, 'Ed25519Key'):
-            # NOQA: new in paramiko>=2.2: http://docs.paramiko.org/en/stable/api/keys.html#module-paramiko.ed25519key
-            paramiko_key_types['ed25519'] = paramiko.Ed25519Key
+        paramiko_key_types = {
+            'rsa': paramiko.RSAKey,
+            'ecdsa': paramiko.ECDSAKey,
+            'ed25519': paramiko.Ed25519Key,
+        }
         for directory in host_pkey_directories:
             for keytype in paramiko_key_types.keys():
                 ssh_pkey_expanded = os.path.expanduser(
@@ -1286,7 +1279,7 @@ class SSHTunnelForwarder(object):
 
         Arguments:
             pkey_file (str):
-                File containing a private key (RSA, DSS or ECDSA)
+                File containing a private key (RSA, ECDSA or Ed25519)
         Keyword Arguments:
             pkey_password (Optional[str]):
                 Password to decrypt the private key
@@ -1295,10 +1288,7 @@ class SSHTunnelForwarder(object):
             paramiko.Pkey
         """
         ssh_pkey = None
-        key_types = (paramiko.RSAKey, paramiko.DSSKey, paramiko.ECDSAKey)
-        if hasattr(paramiko, 'Ed25519Key'):
-            # NOQA: new in paramiko>=2.2: http://docs.paramiko.org/en/stable/api/keys.html#module-paramiko.ed25519key
-            key_types += (paramiko.Ed25519Key, )
+        key_types = (paramiko.RSAKey, paramiko.ECDSAKey, paramiko.Ed25519Key)
         for pkey_class in (key_type,) if key_type else key_types:
             try:
                 ssh_pkey = pkey_class.from_private_key_file(
@@ -1806,7 +1796,7 @@ def _parse_arguments(args=None):
         dest='ssh_private_key',
         metavar='KEY_FILE',
         type=str,
-        help='RSA/DSS/ECDSA private key file'
+        help='RSA/ECDSA/Ed25519 private key file'
     )
 
     parser.add_argument(
@@ -1814,7 +1804,7 @@ def _parse_arguments(args=None):
         dest='ssh_private_key_password',
         metavar='KEY_PASSWORD',
         type=str,
-        help='RSA/DSS/ECDSA private key password'
+        help='RSA/ECDSA/Ed25519 private key password'
     )
 
     parser.add_argument(
@@ -1912,7 +1902,6 @@ def _cli_main(args=None, **extras):
               logging.DEBUG,
               TRACE_LEVEL]
     arguments.setdefault('debug_level', levels[verbosity])
-    # do this while supporting py27/py34 instead of merging dicts
     for (extra, value) in extras.items():
         arguments.setdefault(extra, value)
     with open_tunnel(**arguments) as tunnel:

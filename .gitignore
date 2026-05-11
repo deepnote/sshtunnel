@@ -1,29 +1,32 @@
-# sshtunnel
-.python-version
-.venv
-.idea
-.env
-
-# general things to ignore
-build/
-dist/
-*.egg-info/
-*.egg*/
+# Python
 *.py[cod]
 __pycache__/
 *.so
-.*cache*/
-#*~
+*.egg-info/
+*.egg*/
+build/
+dist/
 
-# due to using tox and pytest
-.tox
-.cache
+# Virtual environments
+.venv/
+.python-version
+
+# IDE
+.idea/
+.vscode/
+
+# Environment
+.env
+
+# Testing
 .coverage*
-*cov*
+htmlcov/
 pytestdebug.log
+pytest.xml
+.pytest_cache/
 
-# due to sphinx
+# uv
+uv.lock
+
+# Docs
 docs/_build/
-
-# Pipfile
-Pipfile*

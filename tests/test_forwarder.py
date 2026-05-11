@@ -1,5 +1,3 @@
-from __future__ import with_statement
-
 import os
 import sys
 import random
@@ -10,25 +8,17 @@ import logging
 import argparse
 import warnings
 import threading
+import unittest
+from io import StringIO
 from os import path, linesep
 from functools import partial
 from contextlib import contextmanager
+from unittest import mock
 
-import mock
 import paramiko
 import sshtunnel
 import shutil
 import tempfile
-
-if sys.version_info[0] == 2:
-    from cStringIO import StringIO
-    if sys.version_info < (2, 7):
-        import unittest2 as unittest
-    else:
-        import unittest
-else:
-    import unittest
-    from io import StringIO
 
 
 # UTILS
@@ -638,8 +628,6 @@ class SSHClientTest(unittest.TestCase):
                 ssh_username=SSH_USERNAME,
             )
 
-    @unittest.skipIf(sys.version_info < (2, 7),
-                     reason="Cannot intercept logging messages in py26")
     def test_reading_from_a_bad_sshconfigfile_does_not_raise_error(self):
         """
         Test that when a bad ssh_config file is found, a warning is shown
@@ -732,8 +720,6 @@ class SSHClientTest(unittest.TestCase):
             ):
                 pass
 
-    @unittest.skipIf(sys.version_info < (2, 7),
-                     reason="Cannot intercept logging messages in py26")
     def test_gateway_ip_unresolvable_raises_exception(self):
         """
         BaseSSHTunnelForwarderError is raised when not able to resolve the
@@ -755,8 +741,6 @@ class SSHClientTest(unittest.TestCase):
             self.sshtunnel_log_messages['error']
         )
 
-    @unittest.skipIf(sys.version_info < (2, 7),
-                     reason="Cannot intercept logging messages in py26")
     def test_running_start_twice_logs_warning(self):
         """Test that when running start() twice a warning is shown"""
         with self._test_server(
@@ -773,8 +757,6 @@ class SSHClientTest(unittest.TestCase):
             self.assertIn('Already started!',
                           self.sshtunnel_log_messages['warning'])
 
-    @unittest.skipIf(sys.version_info < (2, 7),
-                     reason="Cannot intercept logging messages in py26")
     def test_stop_before_start_logs_warning(self):
         """
         Test that running .stop() on an already stopped server logs a warning
@@ -791,8 +773,6 @@ class SSHClientTest(unittest.TestCase):
         self.assertIn('Server is not started. Please .start() first!',
                       self.sshtunnel_log_messages['warning'])
 
-    @unittest.skipIf(sys.version_info < (2, 7),
-                     reason="Cannot intercept logging messages in py26")
     def test_wrong_auth_to_gateway_logs_error(self):
         """
         Test that when connecting to the ssh gateway with wrong credentials,
@@ -810,8 +790,6 @@ class SSHClientTest(unittest.TestCase):
         self.assertIn('Could not open connection to gateway',
                       self.sshtunnel_log_messages['error'])
 
-    @unittest.skipIf(sys.version_info < (2, 7),
-                     reason="Cannot intercept logging messages in py26")
     def test_missing_pkey_file_logs_warning(self):
         """
         Test that when the private key file is missing, a warning is logged
@@ -843,8 +821,6 @@ class SSHClientTest(unittest.TestCase):
         )
         self.assertEqual(server.ssh_proxy.cmd[1], 'proxy')
 
-    @unittest.skipIf(sys.version_info < (2, 7),
-                     reason="Cannot intercept logging messages in py26")
     def test_can_skip_loading_sshconfig(self):
         """ Test that we can skip loading the ~/.ssh/config file """
         server = open_tunnel(
@@ -964,8 +940,6 @@ class SSHClientTest(unittest.TestCase):
             with self.assertRaises(sshtunnel.BaseSSHTunnelForwarderError):
                 self.log.info(server.local_bind_address)
 
-    @unittest.skipIf(sys.version_info < (2, 7),
-                     reason="Cannot intercept logging messages in py26")
     def test_check_tunnels(self):
         """ Test method checking if tunnels are up """
         remote_address = (self.eaddr, self.eport)
@@ -1011,8 +985,6 @@ class SSHClientTest(unittest.TestCase):
                             host_pkey_directories=[])
         self.stop_echo_and_ssh_server()
 
-    @unittest.skipIf(sys.version_info < (2, 7),
-                     reason="Cannot intercept logging messages in py26")
     def test_read_private_key_file(self):
         """ Test that an encrypted private key can be opened """
         encr_pkey = get_test_data_path(ENCRYPTED_PKEY_FILE)
@@ -1058,8 +1030,6 @@ class SSHClientTest(unittest.TestCase):
         ) as server:
             self.assertEqual(server.local_bind_address, TEST_UNIX_SOCKET)
 
-    @unittest.skipIf(sys.version_info < (2, 7),
-                     reason="Cannot intercept logging messages in py26")
     def test_tracing_logging(self):
         """
         Test that Tracing mode may be enabled for more fine-grained logs
@@ -1301,10 +1271,7 @@ class AuxiliaryTest(unittest.TestCase):
         with capture_stdout_stderr() as (out, err):
             with self.assertRaises(SystemExit):
                 sshtunnel._cli_main(args=['-V'])
-        if sys.version_info < (3, 4):
-            version = err.getvalue().split()[-1]
-        else:
-            version = out.getvalue().split()[-1]
+        version = out.getvalue().split()[-1]
         self.assertEqual(version,
                          sshtunnel.__version__)
 

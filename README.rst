@@ -1,52 +1,40 @@
-|CircleCI| |AppVeyor| |readthedocs| |coveralls| |version|
+|CI| |pyversions| |version| |license|
 
-|pyversions| |license|
+``deepnote-sshtunnel`` -- Pure python SSH tunnels
+==================================================
 
-**Author**: `Pahaz`_
+This is a `Deepnote <https://deepnote.com>`_ fork of `pahaz/sshtunnel`_ with
+the following changes:
 
-**Repo**: https://github.com/pahaz/sshtunnel/
+- **Python 3.10+** only (dropped Python 2 and older 3.x support)
+- **paramiko 3, 4, and 5** compatibility (removed deprecated DSA/DSSKey support)
+- Modern packaging with ``pyproject.toml``, ``hatchling``, and ``uv``
+- GitHub Actions CI and trusted PyPI publishing
 
-Inspired by https://github.com/jmagnusson/bgtunnel, which doesn't work on
-Windows.
+**Original author**: `Pahaz`_
 
-See also: https://github.com/paramiko/paramiko/blob/master/demos/forward.py
+**Upstream repo**: https://github.com/pahaz/sshtunnel/
 
 Requirements
--------------
+------------
 
-* `paramiko`_
+* `paramiko`_ >= 3.4
+* Python >= 3.10
 
 Installation
 ============
 
-`sshtunnel`_ is on PyPI, so simply run:
+``deepnote-sshtunnel`` is on PyPI, so simply run::
 
-::
+    pip install deepnote-sshtunnel
 
-    pip install sshtunnel
+or::
 
-or ::
+    uv add deepnote-sshtunnel
 
-    easy_install sshtunnel
+The import name remains ``sshtunnel`` for drop-in compatibility::
 
-or ::
-
-    conda install -c conda-forge sshtunnel
-
-to have it installed in your environment.
-
-For installing from source, clone the
-`repo <https://github.com/pahaz/sshtunnel>`_ and run::
-
-    python setup.py install
-
-Testing the package
--------------------
-
-In order to run the tests you first need
-`tox <https://testrun.org/tox/latest/>`_ and run::
-
-    python setup.py test
+    from sshtunnel import SSHTunnelForwarder
 
 Usage scenarios
 ===============
@@ -213,77 +201,13 @@ time.
                 ssh.exec_command(...)
 
 
-CLI usage
-=========
-
-::
-
-    $ sshtunnel --help
-    usage: sshtunnel [-h] [-U SSH_USERNAME] [-p SSH_PORT] [-P SSH_PASSWORD] -R
-                     IP:PORT [IP:PORT ...] [-L [IP:PORT ...]] [-k SSH_HOST_KEY]
-                     [-K KEY_FILE] [-S KEY_PASSWORD] [-t] [-v] [-V] [-x IP:PORT]
-                     [-c SSH_CONFIG_FILE] [-z] [-n] [-d [FOLDER ...]]
-                     ssh_address
-
-    Pure python ssh tunnel utils
-    Version 0.4.0
-
-    positional arguments:
-      ssh_address           SSH server IP address (GW for SSH tunnels)
-                            set with "-- ssh_address" if immediately after -R or -L
-
-    options:
-      -h, --help            show this help message and exit
-      -U SSH_USERNAME, --username SSH_USERNAME
-                            SSH server account username
-      -p SSH_PORT, --server_port SSH_PORT
-                            SSH server TCP port (default: 22)
-      -P SSH_PASSWORD, --password SSH_PASSWORD
-                            SSH server account password
-      -R IP:PORT [IP:PORT ...], --remote_bind_address IP:PORT [IP:PORT ...]
-                            Remote bind address sequence: ip_1:port_1 ip_2:port_2 ... ip_n:port_n
-                            Equivalent to ssh -Lxxxx:IP_ADDRESS:PORT
-                            If port is omitted, defaults to 22.
-                            Example: -R 10.10.10.10: 10.10.10.10:5900
-      -L [IP:PORT ...], --local_bind_address [IP:PORT ...]
-                            Local bind address sequence: ip_1:port_1 ip_2:port_2 ... ip_n:port_n
-                            Elements may also be valid UNIX socket domains:
-                            /tmp/foo.sock /tmp/bar.sock ... /tmp/baz.sock
-                            Equivalent to ssh -LPORT:xxxxxxxxx:xxxx, being the local IP address optional.
-                            By default it will listen in all interfaces (0.0.0.0) and choose a random port.
-                            Example: -L :40000
-      -k SSH_HOST_KEY, --ssh_host_key SSH_HOST_KEY
-                            Gateway's host key
-      -K KEY_FILE, --private_key_file KEY_FILE
-                            RSA/DSS/ECDSA private key file
-      -S KEY_PASSWORD, --private_key_password KEY_PASSWORD
-                            RSA/DSS/ECDSA private key password
-      -t, --threaded        Allow concurrent connections to each tunnel
-      -v, --verbose         Increase output verbosity (default: ERROR)
-      -V, --version         Show version number and quit
-      -x IP:PORT, --proxy IP:PORT
-                            IP and port of SSH proxy to destination
-      -c SSH_CONFIG_FILE, --config SSH_CONFIG_FILE
-                            SSH configuration file, defaults to ~/.ssh/config
-      -z, --compress        Request server for compression over SSH transport
-      -n, --noagent         Disable looking for keys from an SSH agent
-      -d [FOLDER ...], --host_pkey_directories [FOLDER ...]
-                            List of directories where SSH pkeys (in the format `id_*`) may be found
-
 .. _Pahaz: https://github.com/pahaz
-.. _sshtunnel: https://pypi.python.org/pypi/sshtunnel
+.. _pahaz/sshtunnel: https://github.com/pahaz/sshtunnel
 .. _paramiko: http://www.paramiko.org/
-.. |CircleCI| image:: https://circleci.com/gh/pahaz/sshtunnel.svg?style=svg
-   :target: https://circleci.com/gh/pahaz/sshtunnel
-.. |AppVeyor| image:: https://ci.appveyor.com/api/projects/status/oxg1vx2ycmnw3xr9?svg=true&passingText=Windows%20-%20OK&failingText=Windows%20-%20Fail
-   :target: https://ci.appveyor.com/project/pahaz/sshtunnel
-.. |readthedocs| image:: https://readthedocs.org/projects/sshtunnel/badge/?version=latest
-   :target: http://sshtunnel.readthedocs.io/en/latest/?badge=latest
-   :alt: Documentation Status
-.. |coveralls| image:: https://coveralls.io/repos/github/pahaz/sshtunnel/badge.svg?branch=master
-   :target: https://coveralls.io/github/pahaz/sshtunnel?branch=master
-.. |pyversions| image:: https://img.shields.io/pypi/pyversions/sshtunnel.svg
-.. |version| image:: https://img.shields.io/pypi/v/sshtunnel.svg
-   :target: `sshtunnel`_
-.. |license| image::  https://img.shields.io/pypi/l/sshtunnel.svg
-   :target: https://github.com/pahaz/sshtunnel/blob/master/LICENSE
+.. |CI| image:: https://github.com/deepnote/sshtunnel/actions/workflows/ci.yml/badge.svg
+   :target: https://github.com/deepnote/sshtunnel/actions/workflows/ci.yml
+.. |pyversions| image:: https://img.shields.io/pypi/pyversions/deepnote-sshtunnel.svg
+.. |version| image:: https://img.shields.io/pypi/v/deepnote-sshtunnel.svg
+   :target: https://pypi.org/project/deepnote-sshtunnel/
+.. |license| image::  https://img.shields.io/pypi/l/deepnote-sshtunnel.svg
+   :target: https://github.com/deepnote/sshtunnel/blob/main/LICENSE

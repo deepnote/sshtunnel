@@ -1,8 +1,0 @@
-bashtest
-check-manifest
-docutils
-flake8
-mccabe
-pygments
-readme
-twine
