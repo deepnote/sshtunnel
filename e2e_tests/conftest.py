@@ -1,8 +1,8 @@
-import os
-import stat
 import shutil
 import tempfile
 import time
+from pathlib import Path
+from textwrap import dedent
 
 import paramiko
 import pytest
@@ -24,46 +24,44 @@ MONGO_PASSWORD = "mongo"
 MONGO_DB = "main"
 
 
-def _generate_ssh_keypair(directory):
+def _generate_ssh_keypair(directory: Path) -> Path:
     """Generate an ephemeral RSA keypair for the test run."""
-    private_key_path = os.path.join(directory, "ssh_host_rsa_key")
-    public_key_path = os.path.join(directory, "ssh_host_rsa_key.pub")
-
     key = paramiko.RSAKey.generate(bits=2048)
-    key.write_private_key_file(private_key_path)
-    os.chmod(private_key_path, stat.S_IRUSR | stat.S_IWUSR)
 
-    with open(public_key_path, "w") as f:
-        f.write(f"{key.get_name()} {key.get_base64()}")
-    os.chmod(public_key_path, stat.S_IRUSR | stat.S_IWUSR)
+    private_key_path = directory / "ssh_host_rsa_key"
+    key.write_private_key_file(str(private_key_path))
+    private_key_path.chmod(0o600)
+
+    public_key_path = directory / "ssh_host_rsa_key.pub"
+    public_key_path.write_text(f"{key.get_name()} {key.get_base64()}")
+    public_key_path.chmod(0o600)
 
     return private_key_path
 
 
-def _generate_sshd_config(directory):
+def _generate_sshd_config(directory: Path) -> Path:
     """Generate an sshd_config that permits TCP forwarding."""
-    config_path = os.path.join(directory, "sshd_config")
-    with open(config_path, "w") as f:
-        f.write(
-            "Port 2222\n"
-            "PermitRootLogin no\n"
-            "PasswordAuthentication no\n"
-            "PubkeyAuthentication yes\n"
-            "AllowTcpForwarding yes\n"
-            "GatewayPorts no\n"
-            "X11Forwarding no\n"
-            "PrintMotd no\n"
-            "AcceptEnv LANG LC_*\n"
-            "Subsystem sftp /usr/lib/ssh/sftp-server\n"
-            "AuthorizedKeysFile .ssh/authorized_keys\n"
-        )
+    config_path = directory / "sshd_config"
+    config_path.write_text(dedent("""\
+        Port 2222
+        PermitRootLogin no
+        PasswordAuthentication no
+        PubkeyAuthentication yes
+        AllowTcpForwarding yes
+        GatewayPorts no
+        X11Forwarding no
+        PrintMotd no
+        AcceptEnv LANG LC_*
+        Subsystem sftp /usr/lib/ssh/sftp-server
+        AuthorizedKeysFile .ssh/authorized_keys
+    """))
     return config_path
 
 
 @pytest.fixture(scope="session")
 def e2e_infrastructure():
     """Spin up SSH + database containers on a shared Docker network."""
-    tmp_key_dir = tempfile.mkdtemp(prefix="sshtunnel-e2e-keys-")
+    tmp_key_dir = Path(tempfile.mkdtemp(prefix="sshtunnel-e2e-keys-"))
     private_key_path = _generate_ssh_keypair(tmp_key_dir)
     sshd_config_path = _generate_sshd_config(tmp_key_dir)
 
@@ -106,8 +104,8 @@ def e2e_infrastructure():
             .with_env("PASSWORD_ACCESS", "false")
             .with_env("USER_NAME", "linuxserver")
             .with_env("LISTEN_PORT", "2222")
-            .with_volume_mapping(tmp_key_dir, "/config/ssh_host_keys", "ro")
-            .with_volume_mapping(sshd_config_path, "/config/sshd_config", "ro")
+            .with_volume_mapping(str(tmp_key_dir), "/config/ssh_host_keys", "ro")
+            .with_volume_mapping(str(sshd_config_path), "/config/sshd_config", "ro")
             .with_exposed_ports(2222)
             .with_network(network)
             .with_network_aliases("ssh-server")
@@ -121,14 +119,11 @@ def e2e_infrastructure():
 
             time.sleep(2)
 
-            ssh_host = ssh.get_container_host_ip()
-            ssh_port = int(ssh.get_exposed_port(2222))
-
             yield {
-                "ssh_host": ssh_host,
-                "ssh_port": ssh_port,
+                "ssh_host": ssh.get_container_host_ip(),
+                "ssh_port": int(ssh.get_exposed_port(2222)),
                 "ssh_username": "linuxserver",
-                "ssh_pkey": private_key_path,
+                "ssh_pkey": str(private_key_path),
                 "pg": {"host": "postgres-db", "port": 5432},
                 "mysql": {"host": "mysql-db", "port": 3306},
                 "mongo": {"host": "mongo-db", "port": 27017},

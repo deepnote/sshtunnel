@@ -20,18 +20,10 @@ import sshtunnel
 import shutil
 import tempfile
 
+from .conftest import PKEY_PASSWORD
 
-# UTILS
 
 def get_random_string(length=12):
-    """
-    >>> r = get_random_string(1)
-    >>> r in asciis
-    True
-    >>> r = get_random_string(2)
-    >>> [r[0] in asciis, r[1] in asciis]
-    [True, True]
-    """
     ascii_lowercase = 'abcdefghijklmnopqrstuvwxyz'
     ascii_uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     digits = '0123456789'
@@ -39,25 +31,19 @@ def get_random_string(length=12):
     return ''.join([random.choice(asciis) for _ in range(length)])
 
 
-def get_test_data_path(x):
-    return path.join(HERE, x)
-
-
 @contextmanager
 def capture_stdout_stderr():
-    (old_out, old_err) = (sys.stdout, sys.stderr)
+    old_out, old_err = sys.stdout, sys.stderr
     try:
         out = [StringIO(), StringIO()]
-        (sys.stdout, sys.stderr) = out
+        sys.stdout, sys.stderr = out
         yield out
     finally:
-        (sys.stdout, sys.stderr) = (old_out, old_err)
+        sys.stdout, sys.stderr = old_out, old_err
         out[0] = out[0].getvalue()
         out[1] = out[1].getvalue()
 
 
-# Ensure that ``ssh_config_file is None`` during tests, exceptions are not
-# raised and pkey loading from an SSH agent is disabled
 open_tunnel = partial(
     sshtunnel.open_tunnel,
     mute_exceptions=False,
@@ -67,25 +53,12 @@ open_tunnel = partial(
     host_pkey_directories=[],
 )
 
-# CONSTANTS
-
 SSH_USERNAME = get_random_string()
 SSH_PASSWORD = get_random_string()
-SSH_DSS = b'\x44\x78\xf0\xb9\xa2\x3c\xc5\x18\x20\x09\xff\x75\x5b\xc1\xd2\x6c'
-SSH_RSA = b'\x60\x73\x38\x44\xcb\x51\x86\x65\x7f\xde\xda\xa2\x2b\x5a\x57\xd5'
-ECDSA = b'\x25\x19\xeb\x55\xe6\xa1\x47\xff\x4f\x38\xd2\x75\x6f\xa5\xd5\x60'
-FINGERPRINTS = {
-    'ssh-dss': SSH_DSS,
-    'ssh-rsa': SSH_RSA,
-    'ecdsa-sha2-nistp256': ECDSA,
-}
 DAEMON_THREADS = False
 HERE = path.abspath(path.dirname(__file__))
 THREADS_TIMEOUT = 5.0
-PKEY_FILE = 'testrsa.key'
-ENCRYPTED_PKEY_FILE = 'testrsa_encrypted.key'
-TEST_CONFIG_FILE = 'testconfig'
-TEST_UNIX_SOCKET = get_test_data_path('test_socket')
+TEST_UNIX_SOCKET = path.join(HERE, 'test_socket')
 
 sshtunnel.TRACE = True
 sshtunnel.SSH_TIMEOUT = 1.0
@@ -124,10 +97,10 @@ class MockLoggingHandler(logging.Handler, object):
 
 class NullServer(paramiko.ServerInterface):
     def __init__(self, *args, **kwargs):
-        # Allow tests to enable/disable specific key types
         self.__allowed_keys = kwargs.pop('allowed_keys', [])
+        self.__fingerprints = kwargs.pop('fingerprints', {})
         self.log = kwargs.pop('log', sshtunnel.create_logger(loglevel='DEBUG'))
-        super(NullServer, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def check_channel_forward_agent_request(self, channel):
         self.log.debug('NullServer.check_channel_forward_agent_request() {0}'
@@ -150,7 +123,7 @@ class NullServer(paramiko.ServerInterface):
 
     def check_auth_publickey(self, username, key):
         try:
-            expected = FINGERPRINTS[key.get_name()]
+            expected = self.__fingerprints[key.get_name()]
             _ok = (key.get_name() in self.__allowed_keys and
                    key.get_fingerprint() == expected)
         except KeyError:
@@ -304,10 +277,11 @@ class SSHClientTest(unittest.TestCase):
             return
         self.ts = paramiko.Transport(self.socks)
         host_key = paramiko.RSAKey.from_private_key_file(
-            get_test_data_path(PKEY_FILE)
+            self.ssh_keys.plain_key_path
         )
         self.ts.add_server_key(host_key)
-        server = NullServer(allowed_keys=FINGERPRINTS.keys(),
+        server = NullServer(allowed_keys=self.ssh_keys.fingerprints.keys(),
+                            fingerprints=self.ssh_keys.fingerprints,
                             log=self.log)
         t = threading.Thread(target=self._do_forwarding,
                              name='forward-server')
@@ -452,7 +426,7 @@ class SSHClientTest(unittest.TestCase):
         with self._test_server(
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
-            ssh_pkey=get_test_data_path(PKEY_FILE),
+            ssh_pkey=self.ssh_keys.plain_key_path,
             remote_bind_address=(self.eaddr, self.eport),
             logger=self.log,
         ):
@@ -461,7 +435,7 @@ class SSHClientTest(unittest.TestCase):
     def test_connect_by_paramiko_key(self):
         """ Test connecting when ssh_private_key is a paramiko.RSAKey """
         ssh_key = paramiko.RSAKey.from_private_key_file(
-            get_test_data_path(PKEY_FILE)
+            self.ssh_keys.plain_key_path
         )
         with self._test_server(
             (self.saddr, self.sport),
@@ -988,14 +962,14 @@ class SSHClientTest(unittest.TestCase):
 
     def test_read_private_key_file(self):
         """ Test that an encrypted private key can be opened """
-        encr_pkey = get_test_data_path(ENCRYPTED_PKEY_FILE)
+        encr_pkey = self.ssh_keys.encrypted_key_path
         pkey = sshtunnel.SSHTunnelForwarder.read_private_key_file(
             encr_pkey,
-            pkey_password='sshtunnel',
+            pkey_password=PKEY_PASSWORD,
             logger=self.log
         )
         _pkey = paramiko.RSAKey.from_private_key_file(
-            get_test_data_path(PKEY_FILE)
+            self.ssh_keys.plain_key_path
         )
         self.assertEqual(pkey, _pkey)
 
@@ -1147,7 +1121,7 @@ class SSHClientTest(unittest.TestCase):
                             self.sshtunnel_log_messages['info']))
 
         tmp_dir = tempfile.mkdtemp()
-        shutil.copy(get_test_data_path(PKEY_FILE),
+        shutil.copy(self.ssh_keys.plain_key_path,
                     os.path.join(tmp_dir, 'id_rsa'))
 
         keys = sshtunnel.SSHTunnelForwarder.get_keys(
@@ -1173,7 +1147,7 @@ class AuxiliaryTest(unittest.TestCase):
                 '-P={0}'.format(SSH_PASSWORD),  # GW password
                 '-R', '10.0.0.1:8080', '10.0.0.2:8080',  # remote bind list
                 '-L', ':8081', ':8082',  # local bind list
-                '-k={0}'.format(SSH_DSS),  # hostkey
+                '-k={0}'.format(self.ssh_keys.fingerprint),  # hostkey
                 '-K={0}'.format(__file__),  # pkey file
                 '-S={0}'.format(SSH_PASSWORD),  # pkey password
                 '-t',  # concurrent connections (threaded)
@@ -1203,7 +1177,7 @@ class AuxiliaryTest(unittest.TestCase):
              '--password={0}'.format(SSH_PASSWORD),  # GW password
              '--remote_bind_address', '10.0.0.1:8080', '10.0.0.2:8080',
              '--local_bind_address', ':8081', ':8082',  # local bind list
-             '--ssh_host_key={0}'.format(SSH_DSS),  # hostkey
+             '--ssh_host_key={0}'.format(self.ssh_keys.fingerprint),  # hostkey
              '--private_key_file={0}'.format(__file__),  # pkey file
              '--private_key_password={0}'.format(SSH_PASSWORD),
              '--threaded',  # concurrent connections (threaded)
@@ -1225,7 +1199,7 @@ class AuxiliaryTest(unittest.TestCase):
                              [('10.0.0.1', 8080), ('10.0.0.2', 8080)])
         self.assertListEqual(parser['local_bind_addresses'],
                              [('', 8081), ('', 8082)])
-        self.assertEqual(parser['ssh_host_key'], str(SSH_DSS))
+        self.assertEqual(parser['ssh_host_key'], str(self.ssh_keys.fingerprint))
         self.assertEqual(parser['ssh_private_key'], __file__)
         self.assertEqual(parser['ssh_private_key_password'], SSH_PASSWORD)
         self.assertTrue(parser['threaded'])
@@ -1292,11 +1266,11 @@ class AuxiliaryTest(unittest.TestCase):
          ssh_proxy,
          compression) = sshtunnel.SSHTunnelForwarder._read_ssh_config(
              'test',
-             get_test_data_path(TEST_CONFIG_FILE),
+             self.ssh_keys.config_path,
         )
         self.assertEqual(ssh_hostname, 'test')
         self.assertEqual(ssh_username, 'test')
-        self.assertEqual(PKEY_FILE, ssh_private_key)
+        self.assertEqual(self.ssh_keys.plain_key_path, ssh_private_key)
         self.assertEqual(ssh_port, 22)  # fallback value
         self.assertListEqual(ssh_proxy.cmd[-2:], ['test:22', 'sshproxy'])
         self.assertTrue(compression)
@@ -1309,7 +1283,7 @@ class AuxiliaryTest(unittest.TestCase):
          ssh_proxy,
          compression) = sshtunnel.SSHTunnelForwarder._read_ssh_config(
              'other',
-             get_test_data_path(TEST_CONFIG_FILE),
+             self.ssh_keys.config_path,
              compression=False
         )
         self.assertEqual(ssh_hostname, '10.0.0.1')
@@ -1319,7 +1293,7 @@ class AuxiliaryTest(unittest.TestCase):
     def test_str(self):
         server = open_tunnel(
             'test',
-            ssh_pkey=get_test_data_path(PKEY_FILE),
+            ssh_pkey=self.ssh_keys.plain_key_path,
             remote_bind_address=('10.0.0.1', 8080),
         )
         _str = str(server).split(linesep)
