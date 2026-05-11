@@ -373,9 +373,14 @@ class SSHClientTest(unittest.TestCase):
     def _do_forwarding(self, timeout=sshtunnel.SSH_TIMEOUT):
         self.log.debug('forward-server Start')
         self.ssh_event.wait(THREADS_TIMEOUT)  # wait for SSH server's transport
+        schan = None
+        echo = None
+        info = "forward-server schan <> echo"
         try:
             schan = self.ts.accept(timeout=timeout)
-            info = "forward-server schan <> echo"
+            if schan is None:
+                self.log.info('forward-server accept() returned None')
+                return
             self.log.info(info + " accept()")
             echo = socket.create_connection(
                 (self.eaddr, self.eport)
@@ -400,13 +405,11 @@ class SSHClientTest(unittest.TestCase):
             self.log.info('<<< forward-server received STOP signal')
         except socket.error:
             self.log.critical('{0} sending RST'.format(info))
-        # except Exception as e:
-        #     # we reach this point usually when schan is None (paramiko bug?)
-        #     self.log.critical(repr(e))
         finally:
             if schan:
                 self.log.debug('{0} closing connection...'.format(info))
                 schan.close()
+            if echo:
                 echo.close()
                 self.log.debug('{0} connection closed.'.format(info))
 
@@ -496,28 +499,34 @@ class SSHClientTest(unittest.TestCase):
         Test that deprecate argument ssh_address cannot be used together with
         ssh_address_or_host
         """
-        with self.assertRaises(ValueError):
-            open_tunnel(
-                ssh_address_or_host=(self.saddr, self.sport),
-                ssh_address=(self.saddr, self.sport),
-                ssh_username=SSH_USERNAME,
-                ssh_password=SSH_PASSWORD,
-                remote_bind_address=(self.eaddr, self.eport),
-            )
+        import pytest
+
+        with pytest.warns(DeprecationWarning, match="ssh_address"):
+            with self.assertRaises(ValueError):
+                open_tunnel(
+                    ssh_address_or_host=(self.saddr, self.sport),
+                    ssh_address=(self.saddr, self.sport),
+                    ssh_username=SSH_USERNAME,
+                    ssh_password=SSH_PASSWORD,
+                    remote_bind_address=(self.eaddr, self.eport),
+                )
 
     def test_sshhost_and_sshaddressorhost_mutually_exclusive(self):
         """
         Test that deprecate argument ssh_host cannot be used together with
         ssh_address_or_host
         """
-        with self.assertRaises(ValueError):
-            open_tunnel(
-                ssh_address_or_host=(self.saddr, self.sport),
-                ssh_host=(self.saddr, self.sport),
-                ssh_username=SSH_USERNAME,
-                ssh_password=SSH_PASSWORD,
-                remote_bind_address=(self.eaddr, self.eport),
-            )
+        import pytest
+
+        with pytest.warns(DeprecationWarning, match="ssh_host"):
+            with self.assertRaises(ValueError):
+                open_tunnel(
+                    ssh_address_or_host=(self.saddr, self.sport),
+                    ssh_host=(self.saddr, self.sport),
+                    ssh_username=SSH_USERNAME,
+                    ssh_password=SSH_PASSWORD,
+                    remote_bind_address=(self.eaddr, self.eport),
+                )
 
     def test_sshaddressorhost_may_not_be_a_tuple(self):
         """
@@ -666,44 +675,33 @@ class SSHClientTest(unittest.TestCase):
                      reason='Need to fix test on Windows')
     def test_deprecate_warnings_are_shown(self):
         """Test that when using deprecate arguments a warning is logged"""
-        warnings.simplefilter('always')  # don't ignore DeprecationWarnings
+        import pytest
 
-        with warnings.catch_warnings(record=True) as w:
-            for deprecated_arg in ['ssh_address', 'ssh_host']:
-                _kwargs = {
+        for deprecated_arg in ['ssh_address', 'ssh_host']:
+            expected = "'{0}' is DEPRECATED use '{1}' instead".format(
+                deprecated_arg, sshtunnel._DEPRECATIONS[deprecated_arg])
+            with pytest.warns(DeprecationWarning, match=expected):
+                open_tunnel(**{
                     deprecated_arg: (self.saddr, self.sport),
                     'ssh_username': SSH_USERNAME,
                     'ssh_password': SSH_PASSWORD,
                     'remote_bind_address': (self.eaddr, self.eport),
-                }
-                open_tunnel(**_kwargs)
-                logged_message = "'{0}' is DEPRECATED use '{1}' instead"\
-                    .format(deprecated_arg,
-                            sshtunnel._DEPRECATIONS[deprecated_arg])
-                self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
-                self.assertEqual(logged_message, str(w[-1].message))
+                })
 
-        # other deprecated arguments
-        with warnings.catch_warnings(record=True) as w:
-            for deprecated_arg in [
-                'raise_exception_if_any_forwarder_have_a_problem',
-                'ssh_private_key'
-            ]:
-                _kwargs = {
+        for deprecated_arg in [
+            'raise_exception_if_any_forwarder_have_a_problem',
+            'ssh_private_key'
+        ]:
+            expected = "'{0}' is DEPRECATED use '{1}' instead".format(
+                deprecated_arg, sshtunnel._DEPRECATIONS[deprecated_arg])
+            with pytest.warns(DeprecationWarning, match=expected):
+                open_tunnel(**{
                     'ssh_address_or_host': (self.saddr, self.sport),
                     'ssh_username': SSH_USERNAME,
                     'ssh_password': SSH_PASSWORD,
                     'remote_bind_address': (self.eaddr, self.eport),
                     deprecated_arg: (self.saddr, self.sport),
-                }
-                open_tunnel(**_kwargs)
-                logged_message = "'{0}' is DEPRECATED use '{1}' instead"\
-                    .format(deprecated_arg,
-                            sshtunnel._DEPRECATIONS[deprecated_arg])
-                self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
-                self.assertEqual(logged_message, str(w[-1].message))
-
-        warnings.simplefilter('default')
+                })
 
     def test_gateway_unreachable_raises_exception(self):
         """
@@ -973,16 +971,19 @@ class SSHClientTest(unittest.TestCase):
     @mock.patch('sshtunnel.input_', return_value=linesep)
     def test_cli_main_exits_when_pressing_enter(self, input):
         """ Test that _cli_main() function quits when Enter is pressed """
+        import pytest
+
         self.start_echo_and_ssh_server()
-        sshtunnel._cli_main(args=[self.saddr,
-                                  '-U', SSH_USERNAME,
-                                  '-P', SSH_PASSWORD,
-                                  '-p', str(self.sport),
-                                  '-R', '{0}:{1}'.format(self.eaddr,
-                                                         self.eport),
-                                  '-c', '',
-                                  '-n'],
-                            host_pkey_directories=[])
+        with pytest.warns(DeprecationWarning, match="ssh_address"):
+            sshtunnel._cli_main(args=[self.saddr,
+                                      '-U', SSH_USERNAME,
+                                      '-P', SSH_PASSWORD,
+                                      '-p', str(self.sport),
+                                      '-R', '{0}:{1}'.format(self.eaddr,
+                                                             self.eport),
+                                      '-c', '',
+                                      '-n'],
+                                host_pkey_directories=[])
         self.stop_echo_and_ssh_server()
 
     def test_read_private_key_file(self):
@@ -1318,7 +1319,7 @@ class AuxiliaryTest(unittest.TestCase):
     def test_str(self):
         server = open_tunnel(
             'test',
-            ssh_private_key=get_test_data_path(PKEY_FILE),
+            ssh_pkey=get_test_data_path(PKEY_FILE),
             remote_bind_address=('10.0.0.1', 8080),
         )
         _str = str(server).split(linesep)
@@ -1330,23 +1331,27 @@ class AuxiliaryTest(unittest.TestCase):
 
     def test_process_deprecations(self):
         """ Test processing deprecated API attributes """
+        import pytest
+
         kwargs = {'ssh_host': '10.0.0.1',
                   'ssh_address': '10.0.0.1',
                   'ssh_private_key': 'testrsa.key',
                   'raise_exception_if_any_forwarder_have_a_problem': True}
         for item in kwargs:
-            self.assertEqual(kwargs[item],
-                             sshtunnel.SSHTunnelForwarder._process_deprecated(
-                None,
-                item,
-                kwargs.copy()
-            ))
+            with pytest.warns(DeprecationWarning, match="is DEPRECATED"):
+                self.assertEqual(kwargs[item],
+                                 sshtunnel.SSHTunnelForwarder._process_deprecated(
+                    None,
+                    item,
+                    kwargs.copy()
+                ))
         # use both deprecated and not None new attribute should raise exception
         for item in kwargs:
-            with self.assertRaises(ValueError):
-                sshtunnel.SSHTunnelForwarder._process_deprecated('some value',
-                                                                 item,
-                                                                 kwargs.copy())
+            with pytest.warns(DeprecationWarning, match="is DEPRECATED"):
+                with self.assertRaises(ValueError):
+                    sshtunnel.SSHTunnelForwarder._process_deprecated('some value',
+                                                                     item,
+                                                                     kwargs.copy())
         # deprecated attribute not in deprecation list should raise exception
         with self.assertRaises(ValueError):
             sshtunnel.SSHTunnelForwarder._process_deprecated('some value',
