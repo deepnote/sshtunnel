@@ -30,22 +30,29 @@ OPENSSH_SERVER_IMAGE = (
 
 
 def _generate_ssh_keypair(directory: Path) -> Path:
-    """Generate an ephemeral RSA keypair for the test run."""
+    """Generate an ephemeral RSA keypair for the test run.
+
+    Files are created with 0o666 permissions so the container's init process
+    (which runs chown to PUID/PGID) can take ownership regardless of host UID.
+    """
     key = paramiko.RSAKey.generate(bits=2048)
 
     private_key_path = directory / "ssh_host_rsa_key"
     key.write_private_key_file(str(private_key_path))
-    private_key_path.chmod(0o600)
+    private_key_path.chmod(0o666)
 
     public_key_path = directory / "ssh_host_rsa_key.pub"
     public_key_path.write_text(f"{key.get_name()} {key.get_base64()}")
-    public_key_path.chmod(0o600)
+    public_key_path.chmod(0o666)
 
     return private_key_path
 
 
 def _generate_sshd_config(directory: Path) -> Path:
-    """Generate an sshd_config that permits TCP forwarding."""
+    """Generate an sshd_config that permits TCP forwarding.
+
+    File is world-writable so the container's init can move/chown it.
+    """
     config_path = directory / "sshd_config"
     config_path.write_text(
         dedent("""\
@@ -62,6 +69,7 @@ def _generate_sshd_config(directory: Path) -> Path:
         AuthorizedKeysFile .ssh/authorized_keys
     """)
     )
+    config_path.chmod(0o666)
     return config_path
 
 
@@ -69,6 +77,7 @@ def _generate_sshd_config(directory: Path) -> Path:
 def e2e_infrastructure():
     """Spin up SSH + database containers on a shared Docker network."""
     tmp_key_dir = Path(tempfile.mkdtemp(prefix="sshtunnel-e2e-keys-"))
+    tmp_key_dir.chmod(0o777)
     private_key_path = _generate_ssh_keypair(tmp_key_dir)
     sshd_config_path = _generate_sshd_config(tmp_key_dir)
 
@@ -111,8 +120,8 @@ def e2e_infrastructure():
             .with_env("PASSWORD_ACCESS", "false")
             .with_env("USER_NAME", "linuxserver")
             .with_env("LISTEN_PORT", "2222")
-            .with_volume_mapping(str(tmp_key_dir), "/config/ssh_host_keys")
-            .with_volume_mapping(str(sshd_config_path), "/config/sshd_config")
+            .with_volume_mapping(str(tmp_key_dir), "/config/ssh_host_keys", "rw")
+            .with_volume_mapping(str(sshd_config_path), "/config/sshd_config", "rw")
             .with_exposed_ports(2222)
             .with_network(network)
             .with_network_aliases("ssh-server")
