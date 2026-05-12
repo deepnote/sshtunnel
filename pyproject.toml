@@ -1,3 +1,102 @@
 [build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta:__legacy__"
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[project]
+name = "deepnote-sshtunnel"
+dynamic = ["version"]
+description = "Pure python SSH tunnels (Deepnote fork)"
+readme = "README.rst"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    {name = "Pahaz White", email = "pahaz.white@gmail.com"},
+]
+maintainers = [
+    {name = "Deepnote", email = "product-engineers@deepnote.com"},
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Build Tools",
+]
+keywords = ["ssh", "tunnel", "paramiko", "proxy", "tcp-forward"]
+dependencies = [
+    "paramiko>=3.4,<6",
+]
+
+[project.urls]
+Homepage = "https://github.com/deepnote/sshtunnel"
+Issues = "https://github.com/deepnote/sshtunnel/issues"
+Changelog = "https://github.com/deepnote/sshtunnel/blob/main/changelog.rst"
+
+[project.scripts]
+sshtunnel = "sshtunnel:_cli_main"
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+]
+e2e = [
+    "testcontainers",
+    "psycopg2-binary",
+    "pymysql",
+    "pymongo",
+    "pytest",
+    "pytest-timeout",
+]
+
+[dependency-groups]
+dev = [
+    "nox[uv]",
+    "ruff",
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+]
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.1"
+pattern = "default-unprefixed"
+vcs = "git"
+style = "pep440"
+metadata = false
+
+[tool.hatch.build.targets.wheel]
+include = ["sshtunnel.py"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "sshtunnel.py",
+    "README.rst",
+    "changelog.rst",
+    "docs.rst",
+    "LICENSE",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+exclude = ["docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = [
+    "E501",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--showlocals --durations=10"

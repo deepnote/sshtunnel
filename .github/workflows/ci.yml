@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}${{ github.ref == 'refs/heads/master' && format('-{0}', github.sha) || '' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main' }}
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      python-versions: ${{ steps.parse.outputs.python-versions }}
+      paramiko-versions: ${{ steps.parse.outputs.paramiko-versions }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          sparse-checkout: noxfile.py
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+      - id: parse
+        name: Extract matrix from noxfile.py
+        run: |
+          sessions=$(uvx --from 'nox[uv]' nox --list --json 2>/dev/null)
+          echo "python-versions=$(echo "$sessions" | jq -c '[.[] | select(.name == "tests") | .python] | unique')" >> "$GITHUB_OUTPUT"
+          echo "paramiko-versions=$(echo "$sessions" | jq -c '[.[] | select(.name == "tests") | .call_spec.paramiko] | unique')" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ${{ fromJSON(needs.matrix.outputs.python-versions) }}
+        paramiko-version: ${{ fromJSON(needs.matrix.outputs.paramiko-versions) }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Run tests (paramiko ${{ matrix.paramiko-version }})
+        run: >
+          uvx --from 'nox[uv]' nox
+          -s "tests-${{ matrix.python-version }}(paramiko='${{ matrix.paramiko-version }}')"
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Run e2e tests
+        run: uvx --from 'nox[uv]' nox -s e2e
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Run ruff check
+        run: uvx ruff check .
+
+      - name: Run ruff format check
+        run: uvx ruff format --check .
