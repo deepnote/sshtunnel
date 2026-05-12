@@ -15,6 +15,7 @@ def _make_tunnel(infra, remote_bind_addresses):
         ssh_username=infra["ssh_username"],
         ssh_pkey=infra["ssh_pkey"],
         remote_bind_addresses=remote_bind_addresses,
+        local_bind_addresses=[("127.0.0.1", 0) for _ in remote_bind_addresses],
     )
 
 
@@ -32,6 +33,7 @@ class TestPostgresTunnel:
                 database=PG_DB,
                 user=PG_USER,
                 password=PG_PASSWORD,
+                connect_timeout=10,
             )
             cur = conn.cursor()
             cur.execute("SELECT version()")
@@ -79,6 +81,9 @@ class TestMongoTunnel:
                 tunnel.local_bind_port,
                 username=MONGO_USER,
                 password=MONGO_PASSWORD,
+                serverSelectionTimeoutMS=10000,
+                connectTimeoutMS=10000,
+                socketTimeoutMS=10000,
             )
             info = client.server_info()
             client.close()
@@ -114,6 +119,7 @@ class TestMultiTunnel:
                 database=PG_DB,
                 user=PG_USER,
                 password=PG_PASSWORD,
+                connect_timeout=10,
             )
             pg_cur = pg_conn.cursor()
             pg_cur.execute("SELECT 1")
@@ -140,6 +146,9 @@ class TestMultiTunnel:
                 mongo_port,
                 username=MONGO_USER,
                 password=MONGO_PASSWORD,
+                serverSelectionTimeoutMS=10000,
+                connectTimeoutMS=10000,
+                socketTimeoutMS=10000,
             )
             assert mongo_client.server_info()["ok"] == 1.0
             mongo_client.close()

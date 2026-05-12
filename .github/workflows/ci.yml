@@ -32,12 +32,10 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
 
-      - name: Install nox
-        run: uv tool install 'nox[uv]'
-
       - name: Run tests (paramiko ${{ matrix.paramiko-version }})
-        run: |
-          nox -s "tests-${{ matrix.python-version }}(paramiko='${{ matrix.paramiko-version }}')"
+        run: >
+          uvx --from 'nox[uv]' nox
+          -s "tests-${{ matrix.python-version }}(paramiko='${{ matrix.paramiko-version }}')"
 
   e2e:
     runs-on: ubuntu-latest
@@ -55,11 +53,8 @@ jobs:
       - name: Set up Python
         run: uv python install 3.13
 
-      - name: Install nox
-        run: uv tool install 'nox[uv]'
-
       - name: Run e2e tests
-        run: nox -s e2e
+        run: uvx --from 'nox[uv]' nox -s e2e
 
   lint:
     runs-on: ubuntu-latest

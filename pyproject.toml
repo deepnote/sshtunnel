@@ -73,7 +73,6 @@ style = "pep440"
 metadata = false
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
 include = ["sshtunnel.py"]
 
 [tool.hatch.build.targets.sdist]

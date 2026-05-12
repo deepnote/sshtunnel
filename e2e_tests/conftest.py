@@ -126,6 +126,8 @@ def e2e_infrastructure():
             wait_for_logs(mongo, LogMessageWaitStrategy("Waiting for connections"), timeout=60)
             wait_for_logs(ssh, LogMessageWaitStrategy("done."), timeout=60)
 
+            # The SSH server logs "done." before sshd is fully accepting connections.
+            # Without this grace period, early tunnel attempts get "Connection refused".
             time.sleep(2)
 
             yield {
