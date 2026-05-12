@@ -47,7 +47,8 @@ def _generate_ssh_keypair(directory: Path) -> Path:
 def _generate_sshd_config(directory: Path) -> Path:
     """Generate an sshd_config that permits TCP forwarding."""
     config_path = directory / "sshd_config"
-    config_path.write_text(dedent("""\
+    config_path.write_text(
+        dedent("""\
         Port 2222
         PermitRootLogin no
         PasswordAuthentication no
@@ -59,7 +60,8 @@ def _generate_sshd_config(directory: Path) -> Path:
         AcceptEnv LANG LC_*
         Subsystem sftp /usr/lib/ssh/sftp-server
         AuthorizedKeysFile .ssh/authorized_keys
-    """))
+    """)
+    )
     return config_path
 
 
@@ -117,7 +119,9 @@ def e2e_infrastructure():
         )
 
         with postgres, mysql, mongo, ssh:
-            wait_for_logs(postgres, LogMessageWaitStrategy("database system is ready to accept connections"), timeout=60)
+            wait_for_logs(
+                postgres, LogMessageWaitStrategy("database system is ready to accept connections"), timeout=60
+            )
             wait_for_logs(mysql, LogMessageWaitStrategy("port: 3306"), timeout=90)
             wait_for_logs(mongo, LogMessageWaitStrategy("Waiting for connections"), timeout=60)
             wait_for_logs(ssh, LogMessageWaitStrategy("done."), timeout=60)

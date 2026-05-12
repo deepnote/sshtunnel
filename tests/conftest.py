@@ -43,7 +43,8 @@ def ssh_keys(tmp_path_factory: pytest.TempPathFactory) -> SSHKeyFixture:
     encrypted_path.chmod(0o600)
 
     config_path = tmp_dir / "testconfig"
-    config_path.write_text(dedent(f"""\
+    config_path.write_text(
+        dedent(f"""\
         Host *
           User test
           Compression yes
@@ -53,7 +54,8 @@ def ssh_keys(tmp_path_factory: pytest.TempPathFactory) -> SSHKeyFixture:
         Host other
           Port 222
           Hostname 10.0.0.1
-    """))
+    """)
+    )
 
     return SSHKeyFixture(
         dir=tmp_dir,

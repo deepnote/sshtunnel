@@ -23,11 +23,11 @@ from .conftest import PKEY_PASSWORD
 
 
 def get_random_string(length=12):
-    ascii_lowercase = 'abcdefghijklmnopqrstuvwxyz'
-    ascii_uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    digits = '0123456789'
+    ascii_lowercase = "abcdefghijklmnopqrstuvwxyz"
+    ascii_uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    digits = "0123456789"
     asciis = ascii_lowercase + ascii_uppercase + digits
-    return ''.join([random.choice(asciis) for _ in range(length)])
+    return "".join([random.choice(asciis) for _ in range(length)])
 
 
 @contextmanager
@@ -57,13 +57,14 @@ SSH_PASSWORD = get_random_string()
 DAEMON_THREADS = False
 HERE = path.abspath(path.dirname(__file__))
 THREADS_TIMEOUT = 5.0
-TEST_UNIX_SOCKET = path.join(HERE, 'test_socket')
+TEST_UNIX_SOCKET = path.join(HERE, "test_socket")
 
 sshtunnel.TRACE = True
 sshtunnel.SSH_TIMEOUT = 1.0
 
 
 # TESTS
+
 
 class MockLoggingHandler(logging.Handler, object):
     """Mock logging handler to check for expected logs.
@@ -73,8 +74,7 @@ class MockLoggingHandler(logging.Handler, object):
     """
 
     def __init__(self, *args, **kwargs):
-        self.messages = {'debug': [], 'info': [], 'warning': [], 'error': [],
-                         'critical': [], 'trace': []}
+        self.messages = {"debug": [], "info": [], "warning": [], "error": [], "critical": [], "trace": []}
         super(MockLoggingHandler, self).__init__(*args, **kwargs)
 
     def emit(self, record):
@@ -96,68 +96,61 @@ class MockLoggingHandler(logging.Handler, object):
 
 class NullServer(paramiko.ServerInterface):
     def __init__(self, *args, **kwargs):
-        self.__allowed_keys = kwargs.pop('allowed_keys', [])
-        self.__fingerprints = kwargs.pop('fingerprints', {})
-        self.log = kwargs.pop('log', sshtunnel.create_logger(loglevel='DEBUG'))
+        self.__allowed_keys = kwargs.pop("allowed_keys", [])
+        self.__fingerprints = kwargs.pop("fingerprints", {})
+        self.log = kwargs.pop("log", sshtunnel.create_logger(loglevel="DEBUG"))
         super().__init__(*args, **kwargs)
 
     def check_channel_forward_agent_request(self, channel):
-        self.log.debug('NullServer.check_channel_forward_agent_request() {0}'
-                       .format(channel))
+        self.log.debug("NullServer.check_channel_forward_agent_request() {0}".format(channel))
         return False
 
     def get_allowed_auths(self, username):
-        allowed_auths = 'publickey{0}'.format(
-            ',password' if username == SSH_USERNAME else ''
-        )
-        self.log.debug('NullServer >> allowed auths for {0}: {1}'
-                       .format(username, allowed_auths))
+        allowed_auths = "publickey{0}".format(",password" if username == SSH_USERNAME else "")
+        self.log.debug("NullServer >> allowed auths for {0}: {1}".format(username, allowed_auths))
         return allowed_auths
 
     def check_auth_password(self, username, password):
-        _ok = (username == SSH_USERNAME and password == SSH_PASSWORD)
-        self.log.debug('NullServer >> password for {0} {1}OK'
-                       .format(username, '' if _ok else 'NOT-'))
+        _ok = username == SSH_USERNAME and password == SSH_PASSWORD
+        self.log.debug("NullServer >> password for {0} {1}OK".format(username, "" if _ok else "NOT-"))
         return paramiko.AUTH_SUCCESSFUL if _ok else paramiko.AUTH_FAILED
 
     def check_auth_publickey(self, username, key):
         try:
             expected = self.__fingerprints[key.get_name()]
-            _ok = (key.get_name() in self.__allowed_keys and
-                   key.get_fingerprint() == expected)
+            _ok = key.get_name() in self.__allowed_keys and key.get_fingerprint() == expected
         except KeyError:
             _ok = False
-        self.log.debug('NullServer >> pkey authentication for {0} {1}OK'
-                       .format(username, '' if _ok else 'NOT-'))
+        self.log.debug("NullServer >> pkey authentication for {0} {1}OK".format(username, "" if _ok else "NOT-"))
         return paramiko.AUTH_SUCCESSFUL if _ok else paramiko.AUTH_FAILED
 
     def check_channel_request(self, kind, chanid):
-        self.log.debug('NullServer.check_channel_request()')
+        self.log.debug("NullServer.check_channel_request()")
         return paramiko.OPEN_SUCCEEDED
 
     def check_channel_exec_request(self, channel, command):
-        self.log.debug('NullServer.check_channel_exec_request()')
+        self.log.debug("NullServer.check_channel_exec_request()")
         return True
 
     def check_port_forward_request(self, address, port):
-        self.log.debug('NullServer.check_port_forward_request()')
+        self.log.debug("NullServer.check_port_forward_request()")
         return True
 
     def check_global_request(self, kind, msg):
-        self.log.debug('NullServer.check_port_forward_request()')
+        self.log.debug("NullServer.check_port_forward_request()")
         return True
 
     def check_channel_direct_tcpip_request(self, chanid, origin, destination):
-        self.log.debug('NullServer.check_channel_direct_tcpip_request'
-                       '(chanid={0}) {1} -> {2}'
-                       .format(chanid, origin, destination))
+        self.log.debug(
+            "NullServer.check_channel_direct_tcpip_request(chanid={0}) {1} -> {2}".format(chanid, origin, destination)
+        )
         return paramiko.OPEN_SUCCEEDED
 
 
 class SSHClientTest(unittest.TestCase):
     def make_socket(self):
         s = socket.socket()
-        s.bind(('localhost', 0))
+        s.bind(("localhost", 0))
         s.listen(5)
         addr, port = s.getsockname()
         return s, addr, port
@@ -167,27 +160,23 @@ class SSHClientTest(unittest.TestCase):
         super(SSHClientTest, cls).setUpClass()
         socket.setdefaulttimeout(sshtunnel.SSH_TIMEOUT)
         cls.log = logging.getLogger(sshtunnel.__name__)
-        cls.log = sshtunnel.create_logger(logger=cls.log,
-                                          loglevel='DEBUG')
-        cls._sshtunnel_log_handler = MockLoggingHandler(level='DEBUG')
+        cls.log = sshtunnel.create_logger(logger=cls.log, loglevel="DEBUG")
+        cls._sshtunnel_log_handler = MockLoggingHandler(level="DEBUG")
         cls.log.addHandler(cls._sshtunnel_log_handler)
         cls.sshtunnel_log_messages = cls._sshtunnel_log_handler.messages
         # set verbose format for logging
-        _fmt = '%(asctime)s| %(levelname)-4.3s|%(threadName)10.9s/' \
-               '%(lineno)04d@%(module)-10.9s| %(message)s'
+        _fmt = "%(asctime)s| %(levelname)-4.3s|%(threadName)10.9s/%(lineno)04d@%(module)-10.9s| %(message)s"
         for handler in cls.log.handlers:
             handler.setFormatter(logging.Formatter(_fmt))
 
     def setUp(self):
         super(SSHClientTest, self).setUp()
-        self.log.debug('*' * 80)
-        self.log.info('setUp for: {0}()'.format(self._testMethodName.upper()))
+        self.log.debug("*" * 80)
+        self.log.info("setUp for: {0}()".format(self._testMethodName.upper()))
         self.ssockl, self.saddr, self.sport = self.make_socket()
         self.esockl, self.eaddr, self.eport = self.make_socket()
-        self.log.info("Socket for ssh-server: {0}:{1}"
-                      .format(self.saddr, self.sport))
-        self.log.info("Socket for echo-server: {0}:{1}"
-                      .format(self.eaddr, self.eport))
+        self.log.info("Socket for ssh-server: {0}:{1}".format(self.saddr, self.sport))
+        self.log.info("Socket for echo-server: {0}:{1}".format(self.eaddr, self.eport))
         self.ssh_event = threading.Event()
 
         self.running_threads = []
@@ -197,47 +186,40 @@ class SSHClientTest(unittest.TestCase):
         self._sshtunnel_log_handler.reset()
 
     def tearDown(self):
-        self.log.info('tearDown for: {0}()'
-                      .format(self._testMethodName.upper()))
+        self.log.info("tearDown for: {0}()".format(self._testMethodName.upper()))
         self.stop_echo_and_ssh_server()
         for thread in self.running_threads:
             x = self.threads[thread]
-            self.log.info('thread {0} ({1})'
-                          .format(thread,
-                                  'alive' if x.is_alive() else 'defunct'))
+            self.log.info("thread {0} ({1})".format(thread, "alive" if x.is_alive() else "defunct"))
 
         while self.running_threads:
             for thread in self.running_threads:
                 x = self.threads[thread]
-                self.wait_for_thread(self.threads[thread],
-                                     who='tearDown')
+                self.wait_for_thread(self.threads[thread], who="tearDown")
                 if not x.is_alive():
-                    self.log.info('thread {0} now stopped'.format(thread))
+                    self.log.info("thread {0} now stopped".format(thread))
 
-        for attr in ['server', 'tc', 'ts', 'socks', 'ssockl', 'esockl']:
+        for attr in ["server", "tc", "ts", "socks", "ssockl", "esockl"]:
             if hasattr(self, attr):
-                self.log.info('tearDown() {0}'.format(attr))
+                self.log.info("tearDown() {0}".format(attr))
                 getattr(self, attr).close()
 
     def wait_for_thread(self, thread, timeout=THREADS_TIMEOUT, who=None):
         if thread.is_alive():
-            self.log.debug('{0}waiting for {1} to end...'
-                           .format('{0} '.format(who) if who else '',
-                                   thread.name))
+            self.log.debug("{0}waiting for {1} to end...".format("{0} ".format(who) if who else "", thread.name))
             thread.join(timeout)
 
     def start_echo_and_ssh_server(self):
         self.is_server_working = True
         self.start_echo_server()
-        t = threading.Thread(target=self._run_ssh_server,
-                             name='ssh-server')
+        t = threading.Thread(target=self._run_ssh_server, name="ssh-server")
         t.daemon = DAEMON_THREADS
         self.running_threads.append(t.name)
         self.threads[t.name] = t
         t.start()
 
     def stop_echo_and_ssh_server(self):
-        self.log.info('Sending STOP signal')
+        self.log.info("Sending STOP signal")
         self.is_server_working = False
 
     def _check_server_auth(self):
@@ -245,8 +227,7 @@ class SSHClientTest(unittest.TestCase):
         self.ssh_event.wait(sshtunnel.SSH_TIMEOUT)  # wait for transport
         self.assertTrue(self.ssh_event.is_set())
         self.assertTrue(self.ts.is_active())
-        self.assertEqual(self.ts.get_username(),
-                         SSH_USERNAME)
+        self.assertEqual(self.ts.get_username(), SSH_USERNAME)
         self.assertTrue(self.ts.is_authenticated())
 
     @contextmanager
@@ -259,92 +240,81 @@ class SSHClientTest(unittest.TestCase):
         server._stop_transport()
 
     def start_echo_server(self):
-        t = threading.Thread(target=self._run_echo_server,
-                             name='echo-server')
+        t = threading.Thread(target=self._run_echo_server, name="echo-server")
         t.daemon = DAEMON_THREADS
         self.running_threads.append(t.name)
         self.threads[t.name] = t
         t.start()
 
     def _run_ssh_server(self):
-        self.log.info('ssh-server Start')
+        self.log.info("ssh-server Start")
         try:
             self.socks, addr = self.ssockl.accept()
         except socket.timeout:
-            self.log.error('ssh-server connection timed out!')
-            self.running_threads.remove('ssh-server')
+            self.log.error("ssh-server connection timed out!")
+            self.running_threads.remove("ssh-server")
             return
         self.ts = paramiko.Transport(self.socks)
-        host_key = paramiko.RSAKey.from_private_key_file(
-            self.ssh_keys.plain_key_path
-        )
+        host_key = paramiko.RSAKey.from_private_key_file(self.ssh_keys.plain_key_path)
         self.ts.add_server_key(host_key)
-        server = NullServer(allowed_keys=self.ssh_keys.fingerprints.keys(),
-                            fingerprints=self.ssh_keys.fingerprints,
-                            log=self.log)
-        t = threading.Thread(target=self._do_forwarding,
-                             name='forward-server')
+        server = NullServer(
+            allowed_keys=self.ssh_keys.fingerprints.keys(), fingerprints=self.ssh_keys.fingerprints, log=self.log
+        )
+        t = threading.Thread(target=self._do_forwarding, name="forward-server")
         t.daemon = DAEMON_THREADS
         self.running_threads.append(t.name)
         self.threads[t.name] = t
         t.start()
         self.ts.start_server(self.ssh_event, server)
-        self.wait_for_thread(t,
-                             timeout=None,
-                             who='ssh-server')
-        self.log.info('ssh-server shutting down')
-        self.running_threads.remove('ssh-server')
+        self.wait_for_thread(t, timeout=None, who="ssh-server")
+        self.log.info("ssh-server shutting down")
+        self.running_threads.remove("ssh-server")
 
     def _run_echo_server(self, timeout=sshtunnel.SSH_TIMEOUT):
-        self.log.info('echo-server Started')
+        self.log.info("echo-server Started")
         self.ssh_event.wait(timeout)  # wait for transport
         socks = [self.esockl]
         try:
             while self.is_server_working:
-                inputready, _, _ = select.select(socks,
-                                                 [],
-                                                 [],
-                                                 timeout)
+                inputready, _, _ = select.select(socks, [], [], timeout)
                 for s in inputready:
                     if s == self.esockl:
                         # handle the server socket
                         try:
                             client, address = self.esockl.accept()
-                            self.log.info('echo-server accept() {0}'
-                                          .format(address))
+                            self.log.info("echo-server accept() {0}".format(address))
                         except OSError:
-                            self.log.info('echo-server accept() OSError')
+                            self.log.info("echo-server accept() OSError")
                             break
                         socks.append(client)
                     else:
                         # handle all other sockets
                         try:
                             data = s.recv(1000)
-                            self.log.info('echo-server echoing {0}'
-                                          .format(data))
+                            self.log.info("echo-server echoing {0}".format(data))
                             s.send(data)
                         except OSError:
-                            self.log.warning('echo-server OSError')
+                            self.log.warning("echo-server OSError")
                             continue
                         finally:
                             s.close()
                             socks.remove(s)
-            self.log.info('<<< echo-server received STOP signal')
+            self.log.info("<<< echo-server received STOP signal")
         except Exception as e:
-            self.log.info('echo-server got Exception: {0}'.format(repr(e)))
+            self.log.info("echo-server got Exception: {0}".format(repr(e)))
         finally:
             self.is_server_working = False
-            if 'forward-server' in self.threads:
-                t = self.threads['forward-server']
-                self.wait_for_thread(t, timeout=None, who='echo-server')
-                self.running_threads.remove('forward-server')
+            if "forward-server" in self.threads:
+                t = self.threads["forward-server"]
+                self.wait_for_thread(t, timeout=None, who="echo-server")
+                self.running_threads.remove("forward-server")
             for s in socks:
                 s.close()
-            self.log.info('echo-server shutting down')
-            self.running_threads.remove('echo-server')
+            self.log.info("echo-server shutting down")
+            self.running_threads.remove("echo-server")
 
     def _do_forwarding(self, timeout=sshtunnel.SSH_TIMEOUT):
-        self.log.debug('forward-server Start')
+        self.log.debug("forward-server Start")
         self.ssh_event.wait(THREADS_TIMEOUT)  # wait for SSH server's transport
         schan = None
         echo = None
@@ -352,39 +322,34 @@ class SSHClientTest(unittest.TestCase):
         try:
             schan = self.ts.accept(timeout=timeout)
             if schan is None:
-                self.log.info('forward-server accept() returned None')
+                self.log.info("forward-server accept() returned None")
                 return
             self.log.info(info + " accept()")
-            echo = socket.create_connection(
-                (self.eaddr, self.eport)
-            )
+            echo = socket.create_connection((self.eaddr, self.eport))
             while self.is_server_working:
-                rqst, _, _ = select.select([schan, echo],
-                                           [],
-                                           [],
-                                           timeout)
+                rqst, _, _ = select.select([schan, echo], [], [], timeout)
                 if schan in rqst:
                     data = schan.recv(1024)
-                    self.log.debug('{0} -->: {1}'.format(info, repr(data)))
+                    self.log.debug("{0} -->: {1}".format(info, repr(data)))
                     echo.send(data)
                     if len(data) == 0:
                         break
                 if echo in rqst:
                     data = echo.recv(1024)
-                    self.log.debug('{0} <--: {1}'.format(info, repr(data)))
+                    self.log.debug("{0} <--: {1}".format(info, repr(data)))
                     schan.send(data)
                     if len(data) == 0:
                         break
-            self.log.info('<<< forward-server received STOP signal')
+            self.log.info("<<< forward-server received STOP signal")
         except socket.error:
-            self.log.critical('{0} sending RST'.format(info))
+            self.log.critical("{0} sending RST".format(info))
         finally:
             if schan:
-                self.log.debug('{0} closing connection...'.format(info))
+                self.log.debug("{0} closing connection...".format(info))
                 schan.close()
             if echo:
                 echo.close()
-                self.log.debug('{0} connection closed.'.format(info))
+                self.log.debug("{0} connection closed.".format(info))
 
     def randomize_eport(self):
         return random.randint(49152, 65535)
@@ -398,19 +363,18 @@ class SSHClientTest(unittest.TestCase):
             logger=self.log,
         ) as server:
             message = get_random_string().encode()
-            local_bind_addr = ('127.0.0.1', server.local_bind_port)
-            self.log.info('_test_server(): try connect!')
+            local_bind_addr = ("127.0.0.1", server.local_bind_port)
+            self.log.info("_test_server(): try connect!")
             s = socket.create_connection(local_bind_addr)
-            self.log.info('_test_server(): connected from {0}! try send!'
-                          .format(s.getsockname()))
+            self.log.info("_test_server(): connected from {0}! try send!".format(s.getsockname()))
             s.send(message)
-            self.log.info('_test_server(): sent!')
-            z = (s.recv(1000))
+            self.log.info("_test_server(): sent!")
+            z = s.recv(1000)
             self.assertEqual(z, message)
             s.close()
 
     def test_connect_by_username_password(self):
-        """ Test connecting using username/password as authentication """
+        """Test connecting using username/password as authentication"""
         with self._test_server(
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
@@ -421,7 +385,7 @@ class SSHClientTest(unittest.TestCase):
             pass  # no exceptions are raised
 
     def test_connect_by_rsa_key_file(self):
-        """ Test connecting using a RSA key file """
+        """Test connecting using a RSA key file"""
         with self._test_server(
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
@@ -432,10 +396,8 @@ class SSHClientTest(unittest.TestCase):
             pass  # no exceptions are raised
 
     def test_connect_by_paramiko_key(self):
-        """ Test connecting when ssh_private_key is a paramiko.RSAKey """
-        ssh_key = paramiko.RSAKey.from_private_key_file(
-            self.ssh_keys.plain_key_path
-        )
+        """Test connecting when ssh_private_key is a paramiko.RSAKey"""
+        ssh_key = paramiko.RSAKey.from_private_key_file(self.ssh_keys.plain_key_path)
         with self._test_server(
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
@@ -446,7 +408,7 @@ class SSHClientTest(unittest.TestCase):
             pass
 
     def test_open_tunnel(self):
-        """ Test wrapper method mainly used from CLI """
+        """Test wrapper method mainly used from CLI"""
         server = sshtunnel.open_tunnel(
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
@@ -522,7 +484,7 @@ class SSHClientTest(unittest.TestCase):
                 ssh_username=SSH_USERNAME,
                 ssh_password=SSH_PASSWORD,
                 remote_bind_address=(self.eaddr, self.eport),
-                i_do_not_exist=0
+                i_do_not_exist=0,
             )
 
     def test_more_local_than_remote_bind_sizes_raises_exception(self):
@@ -536,8 +498,7 @@ class SSHClientTest(unittest.TestCase):
                 ssh_username=SSH_USERNAME,
                 ssh_password=SSH_PASSWORD,
                 remote_bind_address=(self.eaddr, self.eport),
-                local_bind_addresses=[('127.0.0.1', self.eport),
-                                      ('127.0.0.1', self.randomize_eport())]
+                local_bind_addresses=[("127.0.0.1", self.eport), ("127.0.0.1", self.randomize_eport())],
             )
 
     def test_localbindaddress_and_localbindaddresses_mutually_exclusive(self):
@@ -551,9 +512,8 @@ class SSHClientTest(unittest.TestCase):
                 ssh_username=SSH_USERNAME,
                 ssh_password=SSH_PASSWORD,
                 remote_bind_address=(self.eaddr, self.eport),
-                local_bind_address=('127.0.0.1', self.eport),
-                local_bind_addresses=[('127.0.0.1', self.eport),
-                                      ('127.0.0.1', self.randomize_eport())]
+                local_bind_address=("127.0.0.1", self.eport),
+                local_bind_addresses=[("127.0.0.1", self.eport), ("127.0.0.1", self.randomize_eport())],
             )
 
     def test_localbindaddress_host_is_optional(self):
@@ -566,9 +526,9 @@ class SSHClientTest(unittest.TestCase):
             ssh_username=SSH_USERNAME,
             ssh_password=SSH_PASSWORD,
             remote_bind_address=(self.eaddr, self.eport),
-            local_bind_address=('', self.randomize_eport())
+            local_bind_address=("", self.randomize_eport()),
         ) as server:
-            self.assertEqual(server.local_bind_host, '0.0.0.0')
+            self.assertEqual(server.local_bind_host, "0.0.0.0")
 
     def test_localbindaddress_port_is_optional(self):
         """
@@ -580,7 +540,7 @@ class SSHClientTest(unittest.TestCase):
             ssh_username=SSH_USERNAME,
             ssh_password=SSH_PASSWORD,
             remote_bind_address=(self.eaddr, self.eport),
-            local_bind_address=('127.0.0.1', )
+            local_bind_address=("127.0.0.1",),
         ) as server:
             self.assertIsInstance(server.local_bind_port, int)
 
@@ -595,8 +555,7 @@ class SSHClientTest(unittest.TestCase):
                 ssh_username=SSH_USERNAME,
                 ssh_password=SSH_PASSWORD,
                 remote_bind_address=(self.eaddr, self.eport),
-                remote_bind_addresses=[(self.eaddr, self.eport),
-                                       (self.eaddr, self.randomize_eport())]
+                remote_bind_addresses=[(self.eaddr, self.eport), (self.eaddr, self.randomize_eport())],
             )
 
     def test_no_remote_bind_address_raises_exception(self):
@@ -615,21 +574,19 @@ class SSHClientTest(unittest.TestCase):
         Test that when a bad ssh_config file is found, a warning is shown
         but no exception is raised
         """
-        ssh_config_file = 'not_existing_file'
+        ssh_config_file = "not_existing_file"
 
         open_tunnel(
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
             ssh_password=SSH_PASSWORD,
             remote_bind_address=(self.eaddr, self.eport),
-            local_bind_address=('127.0.0.1', self.randomize_eport()),
+            local_bind_address=("127.0.0.1", self.randomize_eport()),
             logger=self.log,
-            ssh_config_file=ssh_config_file
+            ssh_config_file=ssh_config_file,
         )
-        logged_message = 'Could not read SSH configuration file: {0}'.format(
-            ssh_config_file
-        )
-        self.assertIn(logged_message, self.sshtunnel_log_messages['warning'])
+        logged_message = "Could not read SSH configuration file: {0}".format(ssh_config_file)
+        self.assertIn(logged_message, self.sshtunnel_log_messages["warning"])
 
     def test_not_setting_password_or_pkey_raises_error(self):
         """
@@ -641,40 +598,42 @@ class SSHClientTest(unittest.TestCase):
                 (self.saddr, self.sport),
                 ssh_username=SSH_USERNAME,
                 remote_bind_address=(self.eaddr, self.eport),
-                ssh_config_file=None
+                ssh_config_file=None,
             )
 
-    @unittest.skipIf(os.name == 'nt',
-                     reason='Need to fix test on Windows')
+    @unittest.skipIf(os.name == "nt", reason="Need to fix test on Windows")
     def test_deprecate_warnings_are_shown(self):
         """Test that when using deprecate arguments a warning is logged"""
         import pytest
 
-        for deprecated_arg in ['ssh_address', 'ssh_host']:
+        for deprecated_arg in ["ssh_address", "ssh_host"]:
             expected = "'{0}' is DEPRECATED use '{1}' instead".format(
-                deprecated_arg, sshtunnel._DEPRECATIONS[deprecated_arg])
+                deprecated_arg, sshtunnel._DEPRECATIONS[deprecated_arg]
+            )
             with pytest.warns(DeprecationWarning, match=expected):
-                open_tunnel(**{
-                    deprecated_arg: (self.saddr, self.sport),
-                    'ssh_username': SSH_USERNAME,
-                    'ssh_password': SSH_PASSWORD,
-                    'remote_bind_address': (self.eaddr, self.eport),
-                })
+                open_tunnel(
+                    **{
+                        deprecated_arg: (self.saddr, self.sport),
+                        "ssh_username": SSH_USERNAME,
+                        "ssh_password": SSH_PASSWORD,
+                        "remote_bind_address": (self.eaddr, self.eport),
+                    }
+                )
 
-        for deprecated_arg in [
-            'raise_exception_if_any_forwarder_have_a_problem',
-            'ssh_private_key'
-        ]:
+        for deprecated_arg in ["raise_exception_if_any_forwarder_have_a_problem", "ssh_private_key"]:
             expected = "'{0}' is DEPRECATED use '{1}' instead".format(
-                deprecated_arg, sshtunnel._DEPRECATIONS[deprecated_arg])
+                deprecated_arg, sshtunnel._DEPRECATIONS[deprecated_arg]
+            )
             with pytest.warns(DeprecationWarning, match=expected):
-                open_tunnel(**{
-                    'ssh_address_or_host': (self.saddr, self.sport),
-                    'ssh_username': SSH_USERNAME,
-                    'ssh_password': SSH_PASSWORD,
-                    'remote_bind_address': (self.eaddr, self.eport),
-                    deprecated_arg: (self.saddr, self.sport),
-                })
+                open_tunnel(
+                    **{
+                        "ssh_address_or_host": (self.saddr, self.sport),
+                        "ssh_username": SSH_USERNAME,
+                        "ssh_password": SSH_PASSWORD,
+                        "remote_bind_address": (self.eaddr, self.eport),
+                        deprecated_arg: (self.saddr, self.sport),
+                    }
+                )
 
     def test_gateway_unreachable_raises_exception(self):
         """
@@ -706,10 +665,7 @@ class SSHClientTest(unittest.TestCase):
             ):
                 pass
         self.assertIn(
-            'Could not resolve IP address for {0}, aborting!'.format(
-                SSH_USERNAME
-            ),
-            self.sshtunnel_log_messages['error']
+            "Could not resolve IP address for {0}, aborting!".format(SSH_USERNAME), self.sshtunnel_log_messages["error"]
         )
 
     def test_running_start_twice_logs_warning(self):
@@ -718,31 +674,28 @@ class SSHClientTest(unittest.TestCase):
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
             ssh_password=SSH_PASSWORD,
-            remote_bind_address=(self.eaddr, self.eport)
+            remote_bind_address=(self.eaddr, self.eport),
         ) as server:
-            self.assertNotIn('Already started!',
-                             self.sshtunnel_log_messages['warning'])
+            self.assertNotIn("Already started!", self.sshtunnel_log_messages["warning"])
             server.logger.error(server.is_active)
             server.logger.error(server.is_alive)
             server.start()  # 2nd start should prompt the warning
-            self.assertIn('Already started!',
-                          self.sshtunnel_log_messages['warning'])
+            self.assertIn("Already started!", self.sshtunnel_log_messages["warning"])
 
     def test_stop_before_start_logs_warning(self):
         """
         Test that running .stop() on an already stopped server logs a warning
         """
         server = open_tunnel(
-            '10.10.10.10',
+            "10.10.10.10",
             ssh_username=SSH_USERNAME,
             ssh_password=SSH_PASSWORD,
-            remote_bind_address=('10.0.0.1', 8080),
+            remote_bind_address=("10.0.0.1", 8080),
             mute_exceptions=True,
             logger=self.log,
         )
         server.stop()
-        self.assertIn('Server is not started. Please .start() first!',
-                      self.sshtunnel_log_messages['warning'])
+        self.assertIn("Server is not started. Please .start() first!", self.sshtunnel_log_messages["warning"])
 
     def test_wrong_auth_to_gateway_logs_error(self):
         """
@@ -758,14 +711,13 @@ class SSHClientTest(unittest.TestCase):
                 logger=self.log,
             ):
                 pass
-        self.assertIn('Could not open connection to gateway',
-                      self.sshtunnel_log_messages['error'])
+        self.assertIn("Could not open connection to gateway", self.sshtunnel_log_messages["error"])
 
     def test_missing_pkey_file_logs_warning(self):
         """
         Test that when the private key file is missing, a warning is logged
         """
-        bad_pkey = 'this_file_does_not_exist'
+        bad_pkey = "this_file_does_not_exist"
         with self._test_server(
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
@@ -774,13 +726,11 @@ class SSHClientTest(unittest.TestCase):
             remote_bind_address=(self.eaddr, self.eport),
             logger=self.log,
         ):
-            self.assertIn('Private key file not found: {0}'.format(bad_pkey),
-                          self.sshtunnel_log_messages['warning'])
+            self.assertIn("Private key file not found: {0}".format(bad_pkey), self.sshtunnel_log_messages["warning"])
 
     def test_connect_via_proxy(self):
-        """ Test connecting using a ProxyCommand """
-        proxycmd = paramiko.proxy.ProxyCommand('ssh proxy -W {0}:{1}'
-                                               .format(self.saddr, self.sport))
+        """Test connecting using a ProxyCommand"""
+        proxycmd = paramiko.proxy.ProxyCommand("ssh proxy -W {0}:{1}".format(self.saddr, self.sport))
         server = open_tunnel(
             self.saddr,
             ssh_username=SSH_USERNAME,
@@ -790,10 +740,10 @@ class SSHClientTest(unittest.TestCase):
             ssh_proxy_enabled=True,
             logger=self.log,
         )
-        self.assertEqual(server.ssh_proxy.cmd[1], 'proxy')
+        self.assertEqual(server.ssh_proxy.cmd[1], "proxy")
 
     def test_can_skip_loading_sshconfig(self):
-        """ Test that we can skip loading the ~/.ssh/config file """
+        """Test that we can skip loading the ~/.ssh/config file"""
         server = open_tunnel(
             (self.saddr, self.sport),
             ssh_password=SSH_PASSWORD,
@@ -802,13 +752,12 @@ class SSHClientTest(unittest.TestCase):
             logger=self.log,
         )
         self.assertEqual(server.ssh_username, getpass.getuser())
-        self.assertIn('Skipping loading of ssh configuration file',
-                      self.sshtunnel_log_messages['info'])
+        self.assertIn("Skipping loading of ssh configuration file", self.sshtunnel_log_messages["info"])
 
     def test_local_bind_port(self):
-        """ Test local_bind_port property """
+        """Test local_bind_port property"""
         s = socket.socket()
-        s.bind(('localhost', 0))
+        s.bind(("localhost", 0))
         addr, port = s.getsockname()
         s.close()
         with self._test_server(
@@ -823,7 +772,7 @@ class SSHClientTest(unittest.TestCase):
             self.assertEqual(server.local_bind_port, port)
 
     def test_local_bind_host(self):
-        """ Test local_bind_host property """
+        """Test local_bind_host property"""
         with self._test_server(
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
@@ -836,9 +785,9 @@ class SSHClientTest(unittest.TestCase):
             self.assertEqual(server.local_bind_host, self.saddr)
 
     def test_local_bind_address(self):
-        """ Test local_bind_address property """
+        """Test local_bind_address property"""
         s = socket.socket()
-        s.bind(('localhost', 0))
+        s.bind(("localhost", 0))
         addr, port = s.getsockname()
         s.close()
         with self._test_server(
@@ -853,13 +802,12 @@ class SSHClientTest(unittest.TestCase):
             self.assertTupleEqual(server.local_bind_address, (addr, port))
 
     def test_local_bind_ports(self):
-        """ Test local_bind_ports property """
+        """Test local_bind_ports property"""
         with self._test_server(
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
             ssh_password=SSH_PASSWORD,
-            remote_bind_addresses=[(self.eaddr, self.eport),
-                                   (self.saddr, self.sport)],
+            remote_bind_addresses=[(self.eaddr, self.eport), (self.saddr, self.sport)],
             logger=self.log,
         ) as server:
             self.assertIsInstance(server.local_bind_ports, list)
@@ -877,42 +825,37 @@ class SSHClientTest(unittest.TestCase):
             self.assertIsInstance(server.local_bind_ports, list)
 
     def test_local_bind_hosts(self):
-        """ Test local_bind_hosts property """
+        """Test local_bind_hosts property"""
         with self._test_server(
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
             ssh_password=SSH_PASSWORD,
             local_bind_addresses=[(self.saddr, 0)] * 2,
-            remote_bind_addresses=[(self.eaddr, self.eport),
-                                   (self.saddr, self.sport)],
+            remote_bind_addresses=[(self.eaddr, self.eport), (self.saddr, self.sport)],
             logger=self.log,
         ) as server:
             self.assertIsInstance(server.local_bind_hosts, list)
-            self.assertListEqual(server.local_bind_hosts,
-                                 [self.saddr] * 2)
+            self.assertListEqual(server.local_bind_hosts, [self.saddr] * 2)
             with self.assertRaises(sshtunnel.BaseSSHTunnelForwarderError):
                 self.log.info(server.local_bind_host)
 
     def test_local_bind_addresses(self):
-        """ Test local_bind_addresses property """
+        """Test local_bind_addresses property"""
         with self._test_server(
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
             ssh_password=SSH_PASSWORD,
             local_bind_addresses=[(self.saddr, 0)] * 2,
-            remote_bind_addresses=[(self.eaddr, self.eport),
-                                   (self.saddr, self.sport)],
+            remote_bind_addresses=[(self.eaddr, self.eport), (self.saddr, self.sport)],
             logger=self.log,
         ) as server:
             self.assertIsInstance(server.local_bind_addresses, list)
-            self.assertListEqual(server.local_bind_addresses,
-                                 list(zip([self.saddr] * 2,
-                                          server.local_bind_ports)))
+            self.assertListEqual(server.local_bind_addresses, list(zip([self.saddr] * 2, server.local_bind_ports)))
             with self.assertRaises(sshtunnel.BaseSSHTunnelForwarderError):
                 self.log.info(server.local_bind_address)
 
     def test_check_tunnels(self):
-        """ Test method checking if tunnels are up """
+        """Test method checking if tunnels are up"""
         remote_address = (self.eaddr, self.eport)
         with self._test_server(
             (self.saddr, self.sport),
@@ -922,78 +865,74 @@ class SSHClientTest(unittest.TestCase):
             logger=self.log,
             skip_tunnel_checkup=False,
         ) as server:
-            self.assertIn('Tunnel to {0} is UP'.format(remote_address),
-                          self.sshtunnel_log_messages['debug'])
+            self.assertIn("Tunnel to {0} is UP".format(remote_address), self.sshtunnel_log_messages["debug"])
 
         server.check_tunnels()
-        self.assertIn('Tunnel to {0} is DOWN'.format(remote_address),
-                      self.sshtunnel_log_messages['debug'])
+        self.assertIn("Tunnel to {0} is DOWN".format(remote_address), self.sshtunnel_log_messages["debug"])
         # Calling local_is_up() should also return the same
         server.skip_tunnel_checkup = True
         server.local_is_up((self.saddr, self.sport))
-        self.assertIn('Tunnel to {0} is DOWN'.format(remote_address),
-                      self.sshtunnel_log_messages['debug'])
+        self.assertIn("Tunnel to {0} is DOWN".format(remote_address), self.sshtunnel_log_messages["debug"])
 
         self.assertFalse(server.local_is_up("not a valid address"))
-        self.assertIn('Target must be a tuple (IP, port), where IP '
-                      'is a string (i.e. "192.168.0.1") and port is '
-                      'an integer (i.e. 40000). Alternatively '
-                      'target can be a valid UNIX domain socket.',
-                      self.sshtunnel_log_messages['warning'])
+        self.assertIn(
+            "Target must be a tuple (IP, port), where IP "
+            'is a string (i.e. "192.168.0.1") and port is '
+            "an integer (i.e. 40000). Alternatively "
+            "target can be a valid UNIX domain socket.",
+            self.sshtunnel_log_messages["warning"],
+        )
 
-    @mock.patch('sshtunnel.input_', return_value=linesep)
+    @mock.patch("sshtunnel.input_", return_value=linesep)
     def test_cli_main_exits_when_pressing_enter(self, input):
-        """ Test that _cli_main() function quits when Enter is pressed """
+        """Test that _cli_main() function quits when Enter is pressed"""
         import pytest
 
         self.start_echo_and_ssh_server()
         with pytest.warns(DeprecationWarning, match="ssh_address"):
-            sshtunnel._cli_main(args=[self.saddr,
-                                      '-U', SSH_USERNAME,
-                                      '-P', SSH_PASSWORD,
-                                      '-p', str(self.sport),
-                                      '-R', '{0}:{1}'.format(self.eaddr,
-                                                             self.eport),
-                                      '-c', '',
-                                      '-n'],
-                                host_pkey_directories=[])
+            sshtunnel._cli_main(
+                args=[
+                    self.saddr,
+                    "-U",
+                    SSH_USERNAME,
+                    "-P",
+                    SSH_PASSWORD,
+                    "-p",
+                    str(self.sport),
+                    "-R",
+                    "{0}:{1}".format(self.eaddr, self.eport),
+                    "-c",
+                    "",
+                    "-n",
+                ],
+                host_pkey_directories=[],
+            )
         self.stop_echo_and_ssh_server()
 
     def test_read_private_key_file(self):
-        """ Test that an encrypted private key can be opened """
+        """Test that an encrypted private key can be opened"""
         encr_pkey = self.ssh_keys.encrypted_key_path
         pkey = sshtunnel.SSHTunnelForwarder.read_private_key_file(
-            encr_pkey,
-            pkey_password=PKEY_PASSWORD,
-            logger=self.log
+            encr_pkey, pkey_password=PKEY_PASSWORD, logger=self.log
         )
-        _pkey = paramiko.RSAKey.from_private_key_file(
-            self.ssh_keys.plain_key_path
-        )
+        _pkey = paramiko.RSAKey.from_private_key_file(self.ssh_keys.plain_key_path)
         self.assertEqual(pkey, _pkey)
 
         # Using a wrong password returns None
-        self.assertIsNone(sshtunnel.SSHTunnelForwarder.read_private_key_file(
-            encr_pkey,
-            pkey_password='bad password',
-            logger=self.log
-        ))
-        self.assertIn("Private key file ({0}) could not be loaded as type "
-                      "{1} or bad password"
-                      .format(encr_pkey, type(_pkey)),
-                      self.sshtunnel_log_messages['debug'])
+        self.assertIsNone(
+            sshtunnel.SSHTunnelForwarder.read_private_key_file(encr_pkey, pkey_password="bad password", logger=self.log)
+        )
+        self.assertIn(
+            "Private key file ({0}) could not be loaded as type {1} or bad password".format(encr_pkey, type(_pkey)),
+            self.sshtunnel_log_messages["debug"],
+        )
         # Using no password on an encrypted key returns None
-        self.assertIsNone(sshtunnel.SSHTunnelForwarder.read_private_key_file(
-            encr_pkey,
-            logger=self.log
-        ))
-        self.assertIn('Password is required for key {0}'.format(encr_pkey),
-                      self.sshtunnel_log_messages['error'])
+        self.assertIsNone(sshtunnel.SSHTunnelForwarder.read_private_key_file(encr_pkey, logger=self.log))
+        self.assertIn("Password is required for key {0}".format(encr_pkey), self.sshtunnel_log_messages["error"])
 
-    @unittest.skipIf(os.name != 'posix',
-                     reason="UNIX sockets not supported on this platform")
+    @unittest.skipIf(os.name != "posix", reason="UNIX sockets not supported on this platform")
     def test_unix_domains(self):
-        """ Test use of UNIX domain sockets in local binds """
+        """Test use of UNIX domain sockets in local binds"""
         with self._test_server(
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
@@ -1008,8 +947,7 @@ class SSHClientTest(unittest.TestCase):
         """
         Test that Tracing mode may be enabled for more fine-grained logs
         """
-        logger = sshtunnel.create_logger(logger=self.log,
-                                         loglevel='TRACE')
+        logger = sshtunnel.create_logger(logger=self.log, loglevel="TRACE")
         with self._test_server(
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
@@ -1017,21 +955,18 @@ class SSHClientTest(unittest.TestCase):
             remote_bind_address=(self.eaddr, self.eport),
             logger=logger,
         ) as server:
-            server.logger = sshtunnel.create_logger(logger=server.logger,
-                                                    loglevel='TRACE')
+            server.logger = sshtunnel.create_logger(logger=server.logger, loglevel="TRACE")
             message = get_random_string(100).encode()
             # Windows raises WinError 10049 if trying to connect to 0.0.0.0
-            s = socket.create_connection(('127.0.0.1', server.local_bind_port))
+            s = socket.create_connection(("127.0.0.1", server.local_bind_port))
             s.send(message)
             s.recv(100)
             s.close
-            log = 'send to {0}'.format((self.eaddr, self.eport))
+            log = "send to {0}".format((self.eaddr, self.eport))
 
-        self.assertTrue(any(log in msg for msg in
-                            self.sshtunnel_log_messages['trace']))
+        self.assertTrue(any(log in msg for msg in self.sshtunnel_log_messages["trace"]))
         # set loglevel back to the original value
-        logger = sshtunnel.create_logger(logger=self.log,
-                                         loglevel='DEBUG')
+        logger = sshtunnel.create_logger(logger=self.log, loglevel="DEBUG")
 
     def test_tunnel_bindings_contain_active_tunnels(self):
         """
@@ -1043,21 +978,13 @@ class SSHClientTest(unittest.TestCase):
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
             ssh_password=SSH_PASSWORD,
-            remote_bind_addresses=[(self.eaddr, remote_ports[0]),
-                                   (self.eaddr, remote_ports[1])],
-            local_bind_addresses=[('127.0.0.1', local_ports[0]),
-                                  ('127.0.0.1', local_ports[1])],
+            remote_bind_addresses=[(self.eaddr, remote_ports[0]), (self.eaddr, remote_ports[1])],
+            local_bind_addresses=[("127.0.0.1", local_ports[0]), ("127.0.0.1", local_ports[1])],
             skip_tunnel_checkup=False,
         ) as server:
             self.assertListEqual(server.local_bind_ports, local_ports)
-            self.assertTupleEqual(
-                server.tunnel_bindings[(self.eaddr, remote_ports[0])],
-                ('127.0.0.1', local_ports[0])
-            )
-            self.assertTupleEqual(
-                server.tunnel_bindings[(self.eaddr, remote_ports[1])],
-                ('127.0.0.1', local_ports[1])
-            )
+            self.assertTupleEqual(server.tunnel_bindings[(self.eaddr, remote_ports[0])], ("127.0.0.1", local_ports[0]))
+            self.assertTupleEqual(server.tunnel_bindings[(self.eaddr, remote_ports[1])], ("127.0.0.1", local_ports[1]))
 
     def check_make_ssh_forward_server_sets_daemon(self, case):
         self.start_echo_and_ssh_server()
@@ -1092,70 +1019,71 @@ class SSHClientTest(unittest.TestCase):
         self.check_make_ssh_forward_server_sets_daemon(False)
 
     def test_get_keys(self):
-        """ Test loading keys from the paramiko Agent """
+        """Test loading keys from the paramiko Agent"""
         with self._test_server(
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
             ssh_password=SSH_PASSWORD,
             remote_bind_address=(self.eaddr, self.eport),
-            local_bind_address=('', self.randomize_eport()),
-            logger=self.log
+            local_bind_address=("", self.randomize_eport()),
+            logger=self.log,
         ) as server:
             keys = server.get_keys(logger=self.log)
             self.assertIsInstance(keys, list)
-            self.assertFalse(any('keys loaded from agent' in msg for msg in
-                             self.sshtunnel_log_messages['info']))
+            self.assertFalse(any("keys loaded from agent" in msg for msg in self.sshtunnel_log_messages["info"]))
 
         with self._test_server(
             (self.saddr, self.sport),
             ssh_username=SSH_USERNAME,
             ssh_password=SSH_PASSWORD,
             remote_bind_address=(self.eaddr, self.eport),
-            local_bind_address=('', self.randomize_eport()),
-            logger=self.log
+            local_bind_address=("", self.randomize_eport()),
+            logger=self.log,
         ) as server:
             keys = server.get_keys(logger=self.log, allow_agent=True)
             self.assertIsInstance(keys, list)
-            self.assertTrue(any('keys loaded from agent' in msg for msg in
-                            self.sshtunnel_log_messages['info']))
+            self.assertTrue(any("keys loaded from agent" in msg for msg in self.sshtunnel_log_messages["info"]))
 
         tmp_dir = tempfile.mkdtemp()
-        shutil.copy(self.ssh_keys.plain_key_path,
-                    os.path.join(tmp_dir, 'id_rsa'))
+        shutil.copy(self.ssh_keys.plain_key_path, os.path.join(tmp_dir, "id_rsa"))
 
         keys = sshtunnel.SSHTunnelForwarder.get_keys(
             self.log,
-            host_pkey_directories=[tmp_dir, ]
+            host_pkey_directories=[
+                tmp_dir,
+            ],
         )
         self.assertIsInstance(keys, list)
-        self.assertTrue(
-            any('1 key(s) loaded' in msg
-                for msg in self.sshtunnel_log_messages['info'])
-        )
+        self.assertTrue(any("1 key(s) loaded" in msg for msg in self.sshtunnel_log_messages["info"]))
         shutil.rmtree(tmp_dir)
 
 
 class AuxiliaryTest(unittest.TestCase):
-    """ Set of tests that do not need the mock SSH server or logger """
+    """Set of tests that do not need the mock SSH server or logger"""
 
     def test_parse_arguments_short(self):
-        """ Test CLI argument parsing with short parameter names """
-        args = ['10.10.10.10',  # ssh_address
-                '-U={0}'.format(getpass.getuser()),  # GW username
-                '-p=22',  # GW SSH port
-                '-P={0}'.format(SSH_PASSWORD),  # GW password
-                '-R', '10.0.0.1:8080', '10.0.0.2:8080',  # remote bind list
-                '-L', ':8081', ':8082',  # local bind list
-                '-k={0}'.format(self.ssh_keys.fingerprint),  # hostkey
-                '-K={0}'.format(__file__),  # pkey file
-                '-S={0}'.format(SSH_PASSWORD),  # pkey password
-                '-t',  # concurrent connections (threaded)
-                '-vvv',  # triple verbosity
-                '-x=10.0.0.2:',  # proxy address
-                '-c=ssh_config',  # ssh configuration file
-                '-z',  # request compression
-                '-n',  # disable SSH agent key lookup
-                ]
+        """Test CLI argument parsing with short parameter names"""
+        args = [
+            "10.10.10.10",  # ssh_address
+            "-U={0}".format(getpass.getuser()),  # GW username
+            "-p=22",  # GW SSH port
+            "-P={0}".format(SSH_PASSWORD),  # GW password
+            "-R",
+            "10.0.0.1:8080",
+            "10.0.0.2:8080",  # remote bind list
+            "-L",
+            ":8081",
+            ":8082",  # local bind list
+            "-k={0}".format(self.ssh_keys.fingerprint),  # hostkey
+            "-K={0}".format(__file__),  # pkey file
+            "-S={0}".format(SSH_PASSWORD),  # pkey password
+            "-t",  # concurrent connections (threaded)
+            "-vvv",  # triple verbosity
+            "-x=10.0.0.2:",  # proxy address
+            "-c=ssh_config",  # ssh configuration file
+            "-z",  # request compression
+            "-n",  # disable SSH agent key lookup
+        ]
         parser = sshtunnel._parse_arguments(args)
         self._test_parser(parser)
 
@@ -1168,180 +1096,166 @@ class AuxiliaryTest(unittest.TestCase):
                 parser = sshtunnel._parse_arguments(args[:4] + args[5:])
 
     def test_parse_arguments_long(self):
-        """ Test CLI argument parsing with long parameter names """
+        """Test CLI argument parsing with long parameter names"""
         parser = sshtunnel._parse_arguments(
-            ['10.10.10.10',  # ssh_address
-             '--username={0}'.format(getpass.getuser()),  # GW username
-             '--server_port=22',  # GW SSH port
-             '--password={0}'.format(SSH_PASSWORD),  # GW password
-             '--remote_bind_address', '10.0.0.1:8080', '10.0.0.2:8080',
-             '--local_bind_address', ':8081', ':8082',  # local bind list
-             '--ssh_host_key={0}'.format(self.ssh_keys.fingerprint),  # hostkey
-             '--private_key_file={0}'.format(__file__),  # pkey file
-             '--private_key_password={0}'.format(SSH_PASSWORD),
-             '--threaded',  # concurrent connections (threaded)
-             '--verbose', '--verbose', '--verbose',  # triple verbosity
-             '--proxy', '10.0.0.2:22',  # proxy address
-             '--config', 'ssh_config',  # ssh configuration file
-             '--compress',  # request compression
-             '--noagent',  # disable SSH agent key lookup
-             ]
+            [
+                "10.10.10.10",  # ssh_address
+                "--username={0}".format(getpass.getuser()),  # GW username
+                "--server_port=22",  # GW SSH port
+                "--password={0}".format(SSH_PASSWORD),  # GW password
+                "--remote_bind_address",
+                "10.0.0.1:8080",
+                "10.0.0.2:8080",
+                "--local_bind_address",
+                ":8081",
+                ":8082",  # local bind list
+                "--ssh_host_key={0}".format(self.ssh_keys.fingerprint),  # hostkey
+                "--private_key_file={0}".format(__file__),  # pkey file
+                "--private_key_password={0}".format(SSH_PASSWORD),
+                "--threaded",  # concurrent connections (threaded)
+                "--verbose",
+                "--verbose",
+                "--verbose",  # triple verbosity
+                "--proxy",
+                "10.0.0.2:22",  # proxy address
+                "--config",
+                "ssh_config",  # ssh configuration file
+                "--compress",  # request compression
+                "--noagent",  # disable SSH agent key lookup
+            ]
         )
         self._test_parser(parser)
 
     def _test_parser(self, parser):
-        self.assertEqual(parser['ssh_address'], '10.10.10.10')
-        self.assertEqual(parser['ssh_username'], getpass.getuser())
-        self.assertEqual(parser['ssh_port'], 22)
-        self.assertEqual(parser['ssh_password'], SSH_PASSWORD)
-        self.assertListEqual(parser['remote_bind_addresses'],
-                             [('10.0.0.1', 8080), ('10.0.0.2', 8080)])
-        self.assertListEqual(parser['local_bind_addresses'],
-                             [('', 8081), ('', 8082)])
-        self.assertEqual(parser['ssh_host_key'], str(self.ssh_keys.fingerprint))
-        self.assertEqual(parser['ssh_private_key'], __file__)
-        self.assertEqual(parser['ssh_private_key_password'], SSH_PASSWORD)
-        self.assertTrue(parser['threaded'])
-        self.assertEqual(parser['verbose'], 3)
-        self.assertEqual(parser['ssh_proxy'], ('10.0.0.2', 22))
-        self.assertEqual(parser['ssh_config_file'], 'ssh_config')
-        self.assertTrue(parser['compression'])
-        self.assertFalse(parser['allow_agent'])
+        self.assertEqual(parser["ssh_address"], "10.10.10.10")
+        self.assertEqual(parser["ssh_username"], getpass.getuser())
+        self.assertEqual(parser["ssh_port"], 22)
+        self.assertEqual(parser["ssh_password"], SSH_PASSWORD)
+        self.assertListEqual(parser["remote_bind_addresses"], [("10.0.0.1", 8080), ("10.0.0.2", 8080)])
+        self.assertListEqual(parser["local_bind_addresses"], [("", 8081), ("", 8082)])
+        self.assertEqual(parser["ssh_host_key"], str(self.ssh_keys.fingerprint))
+        self.assertEqual(parser["ssh_private_key"], __file__)
+        self.assertEqual(parser["ssh_private_key_password"], SSH_PASSWORD)
+        self.assertTrue(parser["threaded"])
+        self.assertEqual(parser["verbose"], 3)
+        self.assertEqual(parser["ssh_proxy"], ("10.0.0.2", 22))
+        self.assertEqual(parser["ssh_config_file"], "ssh_config")
+        self.assertTrue(parser["compression"])
+        self.assertFalse(parser["allow_agent"])
 
     def test_bindlist(self):
         """
         Test that _bindlist enforces IP:PORT format for local and remote binds
         """
-        self.assertTupleEqual(sshtunnel._bindlist('10.0.0.1:8080'),
-                              ('10.0.0.1', 8080))
+        self.assertTupleEqual(sshtunnel._bindlist("10.0.0.1:8080"), ("10.0.0.1", 8080))
         # Missing port in tuple is filled with port 22
-        self.assertTupleEqual(sshtunnel._bindlist('10.0.0.1:'),
-                              ('10.0.0.1', 22))
-        self.assertTupleEqual(sshtunnel._bindlist('10.0.0.1'),
-                              ('10.0.0.1', 22))
+        self.assertTupleEqual(sshtunnel._bindlist("10.0.0.1:"), ("10.0.0.1", 22))
+        self.assertTupleEqual(sshtunnel._bindlist("10.0.0.1"), ("10.0.0.1", 22))
         with self.assertRaises(argparse.ArgumentTypeError):
-            sshtunnel._bindlist('10022:10.0.0.1:22')
+            sshtunnel._bindlist("10022:10.0.0.1:22")
         with self.assertRaises(argparse.ArgumentTypeError):
-            sshtunnel._bindlist(':')
+            sshtunnel._bindlist(":")
 
     def test_raise_fwd_ext(self):
-        """ Test that we can silence the exceptions on sshtunnel creation """
+        """Test that we can silence the exceptions on sshtunnel creation"""
         server = open_tunnel(
-            '10.10.10.10',
+            "10.10.10.10",
             ssh_username=SSH_USERNAME,
             ssh_password=SSH_PASSWORD,
-            remote_bind_address=('10.0.0.1', 8080),
+            remote_bind_address=("10.0.0.1", 8080),
             mute_exceptions=True,
         )
         # This should not raise an exception
-        server._raise(sshtunnel.BaseSSHTunnelForwarderError, 'test')
+        server._raise(sshtunnel.BaseSSHTunnelForwarderError, "test")
 
         server._raise_fwd_exc = True  # now exceptions are not silenced
         with self.assertRaises(sshtunnel.BaseSSHTunnelForwarderError):
-            server._raise(sshtunnel.BaseSSHTunnelForwarderError, 'test')
+            server._raise(sshtunnel.BaseSSHTunnelForwarderError, "test")
 
     def test_show_running_version(self):
-        """ Test that _cli_main() function quits when Enter is pressed """
+        """Test that _cli_main() function quits when Enter is pressed"""
         with capture_stdout_stderr() as (out, err):
             with self.assertRaises(SystemExit):
-                sshtunnel._cli_main(args=['-V'])
+                sshtunnel._cli_main(args=["-V"])
         version = out.getvalue().split()[-1]
-        self.assertEqual(version,
-                         sshtunnel.__version__)
+        self.assertEqual(version, sshtunnel.__version__)
 
     def test_remove_none_values(self):
-        """ Test removing keys from a dict where values are None """
-        test_dict = {'key1': 1, 'key2': None, 'key3': 3, 'key4': 0}
+        """Test removing keys from a dict where values are None"""
+        test_dict = {"key1": 1, "key2": None, "key3": 3, "key4": 0}
         sshtunnel._remove_none_values(test_dict)
-        self.assertDictEqual(test_dict,
-                             {'key1': 1, 'key3': 3, 'key4': 0})
+        self.assertDictEqual(test_dict, {"key1": 1, "key3": 3, "key4": 0})
 
     def test_read_ssh_config(self):
-        """ Test that we can gather host information from a config file """
-        (ssh_hostname,
-         ssh_username,
-         ssh_private_key,
-         ssh_port,
-         ssh_proxy,
-         compression) = sshtunnel.SSHTunnelForwarder._read_ssh_config(
-             'test',
-             self.ssh_keys.config_path,
+        """Test that we can gather host information from a config file"""
+        (ssh_hostname, ssh_username, ssh_private_key, ssh_port, ssh_proxy, compression) = (
+            sshtunnel.SSHTunnelForwarder._read_ssh_config(
+                "test",
+                self.ssh_keys.config_path,
+            )
         )
-        self.assertEqual(ssh_hostname, 'test')
-        self.assertEqual(ssh_username, 'test')
+        self.assertEqual(ssh_hostname, "test")
+        self.assertEqual(ssh_username, "test")
         self.assertEqual(self.ssh_keys.plain_key_path, ssh_private_key)
         self.assertEqual(ssh_port, 22)  # fallback value
-        self.assertListEqual(ssh_proxy.cmd[-2:], ['test:22', 'sshproxy'])
+        self.assertListEqual(ssh_proxy.cmd[-2:], ["test:22", "sshproxy"])
         self.assertTrue(compression)
 
         # passed parameters are not overriden by config
-        (ssh_hostname,
-         ssh_username,
-         ssh_private_key,
-         ssh_port,
-         ssh_proxy,
-         compression) = sshtunnel.SSHTunnelForwarder._read_ssh_config(
-             'other',
-             self.ssh_keys.config_path,
-             compression=False
+        (ssh_hostname, ssh_username, ssh_private_key, ssh_port, ssh_proxy, compression) = (
+            sshtunnel.SSHTunnelForwarder._read_ssh_config("other", self.ssh_keys.config_path, compression=False)
         )
-        self.assertEqual(ssh_hostname, '10.0.0.1')
+        self.assertEqual(ssh_hostname, "10.0.0.1")
         self.assertEqual(ssh_port, 222)
         self.assertFalse(compression)
 
     def test_str(self):
         server = open_tunnel(
-            'test',
+            "test",
             ssh_pkey=self.ssh_keys.plain_key_path,
-            remote_bind_address=('10.0.0.1', 8080),
+            remote_bind_address=("10.0.0.1", 8080),
         )
         _str = str(server).split(linesep)
         self.assertEqual(repr(server), str(server))
-        self.assertIn('ssh gateway: test:22', _str)
-        self.assertIn('proxy: no', _str)
-        self.assertIn('username: {0}'.format(getpass.getuser()), _str)
-        self.assertIn('status: not started', _str)
+        self.assertIn("ssh gateway: test:22", _str)
+        self.assertIn("proxy: no", _str)
+        self.assertIn("username: {0}".format(getpass.getuser()), _str)
+        self.assertIn("status: not started", _str)
 
     def test_process_deprecations(self):
-        """ Test processing deprecated API attributes """
+        """Test processing deprecated API attributes"""
         import pytest
 
-        kwargs = {'ssh_host': '10.0.0.1',
-                  'ssh_address': '10.0.0.1',
-                  'ssh_private_key': 'testrsa.key',
-                  'raise_exception_if_any_forwarder_have_a_problem': True}
+        kwargs = {
+            "ssh_host": "10.0.0.1",
+            "ssh_address": "10.0.0.1",
+            "ssh_private_key": "testrsa.key",
+            "raise_exception_if_any_forwarder_have_a_problem": True,
+        }
         for item in kwargs:
             with pytest.warns(DeprecationWarning, match="is DEPRECATED"):
-                self.assertEqual(kwargs[item],
-                                 sshtunnel.SSHTunnelForwarder._process_deprecated(
-                    None,
-                    item,
-                    kwargs.copy()
-                ))
+                self.assertEqual(
+                    kwargs[item], sshtunnel.SSHTunnelForwarder._process_deprecated(None, item, kwargs.copy())
+                )
         # use both deprecated and not None new attribute should raise exception
         for item in kwargs:
             with pytest.warns(DeprecationWarning, match="is DEPRECATED"):
                 with self.assertRaises(ValueError):
-                    sshtunnel.SSHTunnelForwarder._process_deprecated('some value',
-                                                                     item,
-                                                                     kwargs.copy())
+                    sshtunnel.SSHTunnelForwarder._process_deprecated("some value", item, kwargs.copy())
         # deprecated attribute not in deprecation list should raise exception
         with self.assertRaises(ValueError):
-            sshtunnel.SSHTunnelForwarder._process_deprecated('some value',
-                                                             'item',
-                                                             kwargs.copy())
+            sshtunnel.SSHTunnelForwarder._process_deprecated("some value", "item", kwargs.copy())
 
     def test_check_address(self):
-        """ Test that an exception is raised with incorrect bind addresses """
-        address_list = [('10.0.0.1', 10000),
-                        ('10.0.0.1', 10001)]
-        if os.name == 'posix':  # UNIX sockets supported by the platform
-            address_list.append('/tmp/unix-socket')
+        """Test that an exception is raised with incorrect bind addresses"""
+        address_list = [("10.0.0.1", 10000), ("10.0.0.1", 10001)]
+        if os.name == "posix":  # UNIX sockets supported by the platform
+            address_list.append("/tmp/unix-socket")
             # UNIX sockets not supported on remote addresses
             with self.assertRaises(AssertionError):
                 sshtunnel.check_addresses(address_list, is_remote=True)
         self.assertIsNone(sshtunnel.check_addresses(address_list))
         with self.assertRaises(ValueError):
-            sshtunnel.check_address('this is not valid')
+            sshtunnel.check_address("this is not valid")
         with self.assertRaises(ValueError):
             sshtunnel.check_address(-1)  # that's not valid either
