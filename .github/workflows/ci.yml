@@ -37,8 +37,7 @@ jobs:
 
       - name: Run tests (paramiko ${{ matrix.paramiko-version }})
         run: |
-          nox -s "tests(paramiko='${{ matrix.paramiko-version }}')" \
-              -p ${{ matrix.python-version }}
+          nox -s "tests-${{ matrix.python-version }}(paramiko='${{ matrix.paramiko-version }}')"
 
   e2e:
     runs-on: ubuntu-latest

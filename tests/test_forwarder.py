@@ -6,7 +6,6 @@ import socket
 import getpass
 import logging
 import argparse
-import warnings
 import threading
 import unittest
 from io import StringIO
