@@ -22,6 +22,17 @@ CONTRIBUTORS
 CHANGELOG
 =========
 
+- v.1.0.0 — Deepnote fork (`Deepnote`_)
+    + Fork as ``deepnote-sshtunnel`` for Paramiko v3/v4/v5 compatibility
+    + Drop Python 2 and Python < 3.10 support
+    + Remove DSA key support (``paramiko.DSSKey`` removed in Paramiko 4)
+    + Add Ed25519 host key support
+    + Modernize packaging: ``hatchling`` + ``uv-dynamic-versioning``
+    + Replace tox/CircleCI/AppVeyor with ``nox`` + GitHub Actions
+    + Add trusted PyPI publishing via OIDC
+    + Rewrite e2e tests to use ``testcontainers`` with ephemeral SSH keys
+    + Format codebase with ``ruff``
+
 - v.0.X.Y (`V0idk`_, `Bruno Inec`_, `alex3d`_)
     + Remove the potential deadlock that is associated with threading.Lock (`#231`_)
     + Remove the hidden modification of the logger in cases where a custom logger is used. (`#250`_)
@@ -150,6 +161,7 @@ CHANGELOG
     + ``open`` function (`Pahaz`_)
 
 
+.. _Deepnote: https://github.com/deepnote
 .. _Pahaz: https://github.com/pahaz
 .. _Cameron Maske: https://github.com/cameronmaske
 .. _Gustavo Machado: https://github.com/gdmachado

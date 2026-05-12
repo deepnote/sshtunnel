@@ -34,7 +34,13 @@ jobs:
 
       - name: Smoke test wheel
         run: |
-          uv run --isolated --no-project --with dist/*.whl python -c "import sshtunnel; print(sshtunnel.__version__)"
+          uv run --isolated --no-project --with dist/*.whl python -c "
+          import sshtunnel
+          version = sshtunnel.__version__
+          expected = '${{ github.ref_name }}'
+          print(f'Built version: {version}')
+          assert version == expected, f'Version mismatch: built {version!r}, expected {expected!r} from tag'
+          "
 
       - name: Upload distributions
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

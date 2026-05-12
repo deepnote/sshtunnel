@@ -34,6 +34,8 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/deepnote/sshtunnel"
+Issues = "https://github.com/deepnote/sshtunnel/issues"
+Changelog = "https://github.com/deepnote/sshtunnel/blob/main/changelog.rst"
 
 [project.scripts]
 sshtunnel = "sshtunnel:_cli_main"
