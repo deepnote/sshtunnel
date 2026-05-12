@@ -70,6 +70,7 @@ fallback-version = "0.0.1"
 pattern = "default-unprefixed"
 vcs = "git"
 style = "pep440"
+metadata = false
 
 [tool.hatch.build.targets.wheel]
 packages = ["."]
