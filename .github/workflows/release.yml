@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+*'
+  pull_request:
+    branches: [main, master]
 
 jobs:
   build:
@@ -47,6 +49,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: build
+    if: github.event_name == 'push'
+    environment: pypi
     permissions:
       id-token: write
       contents: read
@@ -63,4 +67,37 @@ jobs:
           path: dist
 
       - name: Publish to PyPI
-        run: uv publish dist/*
+        run: uv publish --trusted-publishing always dist/*
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
+    environment: testpypi
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Download distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to TestPyPI
+        run: >
+          uv publish
+          --trusted-publishing always
+          --publish-url https://test.pypi.org/legacy/
+          --check-url https://test.pypi.org/simple
+          dist/*
