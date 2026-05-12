@@ -34,7 +34,7 @@ input_ = input
 try:
     __version__ = _get_version("deepnote-sshtunnel")
 except Exception:
-    __version__ = "0.0.0"
+    __version__ = "0.0.1"
 __author__ = "pahaz"
 
 
