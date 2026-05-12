@@ -23,6 +23,11 @@ MONGO_USER = "mongo"
 MONGO_PASSWORD = "mongo"
 MONGO_DB = "main"
 
+OPENSSH_SERVER_IMAGE = (
+    "linuxserver/openssh-server:10.2_p1-r0-ls225"
+    "@sha256:29d4e3f887596c4c2fc609f4e07040b08890a238178da400ffa2a602b55245bc"
+)
+
 
 def _generate_ssh_keypair(directory: Path) -> Path:
     """Generate an ephemeral RSA keypair for the test run."""
@@ -95,7 +100,7 @@ def e2e_infrastructure():
         )
 
         ssh = (
-            DockerContainer("linuxserver/openssh-server:latest")
+            DockerContainer(OPENSSH_SERVER_IMAGE)
             .with_env("PUID", "1000")
             .with_env("PGID", "1000")
             .with_env("TZ", "UTC")
